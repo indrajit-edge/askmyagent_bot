@@ -41,6 +41,10 @@ const defaultDbPath = path.join(__dirname, '../../database.sqlite');
 const dbUrl = process.env.DATABASE_URL;
 const isPostgres = !!dbUrl && (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://'));
 
+if (process.env.NODE_ENV === 'production' && !isPostgres) {
+  throw new Error('DATABASE_URL must be configured with a PostgreSQL connection string in production.');
+}
+
 const config: { [key: string]: Knex.Config } = {
   development: isPostgres
     ? {
@@ -66,30 +70,18 @@ const config: { [key: string]: Knex.Config } = {
           tableName: 'knex_migrations'
         }
       },
-  production: isPostgres
-    ? {
-        client: 'pg',
-        connection: {
-          connectionString: dbUrl,
-          ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false }
-        },
-        pool: { min: 2, max: 20 },
-        migrations: {
-          migrationSource,
-          tableName: 'knex_migrations'
-        }
-      }
-    : {
-        client: 'sqlite3',
-        connection: {
-          filename: process.env.DATABASE_PATH || defaultDbPath
-        },
-        useNullAsDefault: true,
-        migrations: {
-          migrationSource,
-          tableName: 'knex_migrations'
-        }
-      },
+  production: {
+    client: 'pg',
+    connection: {
+      connectionString: dbUrl,
+      ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false }
+    },
+    pool: { min: 2, max: 20 },
+    migrations: {
+      migrationSource,
+      tableName: 'knex_migrations'
+    }
+  },
   test: {
     client: 'sqlite3',
     connection: {

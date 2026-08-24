@@ -6,7 +6,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "db:migrate": "tsx src/scripts/migrate_current_schema.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

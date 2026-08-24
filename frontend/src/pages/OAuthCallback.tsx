@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, Loader2, ShieldCheck, ArrowLeft, Send } from 'lu
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { apiFetch } from '../lib/api';
 
 interface OAuthCallbackProps {
   onNavigateHome: () => void;
@@ -61,10 +62,7 @@ export default function OAuthCallback({ onNavigateHome }: OAuthCallbackProps) {
       // Fallback
     }
 
-    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-    const endpoint = `${apiBase}/api/oauth/callback`;
-
-    fetch(endpoint, {
+    apiFetch('/api/oauth/callback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, state })

@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { apiFetch } from '../lib/api';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -23,7 +24,7 @@ export default function Login({ onLoginSuccess, onNavigateHome }: LoginProps) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await apiFetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

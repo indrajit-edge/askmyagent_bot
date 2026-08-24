@@ -12,6 +12,7 @@ import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Dialog } from '../components/ui/Dialog';
+import { apiFetch } from '../lib/api';
 
 interface Stats {
   totalUsers: number;
@@ -167,14 +168,14 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
       if (roleFilter !== 'all') params.append('role', roleFilter);
 
       const [usersRes, statsRes, connRes, secRes, healthRes, backupRes, logsRes, emergRes] = await Promise.all([
-        fetch(`/api/users?${params.toString()}`),
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/connectors'),
-        fetch('/api/admin/security/events'),
-        fetch('/api/admin/system/health'),
-        fetch('/api/admin/system/backup-status'),
-        fetch('/api/admin/audit-logs'),
-        fetch('/api/admin/emergency')
+        apiFetch(`/api/users?${params.toString()}`),
+        apiFetch('/api/admin/stats'),
+        apiFetch('/api/admin/connectors'),
+        apiFetch('/api/admin/security/events'),
+        apiFetch('/api/admin/system/health'),
+        apiFetch('/api/admin/system/backup-status'),
+        apiFetch('/api/admin/audit-logs'),
+        apiFetch('/api/admin/emergency')
       ]);
 
       if (usersRes.status === 401 || statsRes.status === 401) {
@@ -221,7 +222,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/admin/logout', { method: 'POST' });
+      await apiFetch('/api/admin/logout', { method: 'POST' });
     } finally {
       onLogout();
     }
@@ -230,7 +231,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   // Open Full User Profile
   const handleOpenProfile = async (user: UserItem) => {
     try {
-      const res = await fetch(`/api/admin/users/${user.id}/profile`);
+      const res = await apiFetch(`/api/admin/users/${user.id}/profile`);
       if (res.ok) {
         const data = await res.json();
         setViewingProfile(data.profile);
@@ -245,7 +246,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   // Revoke User Connector
   const handleRevokeConnector = async (userId: number, provider: string) => {
     try {
-      const res = await fetch(`/api/admin/users/${userId}/connectors/${provider}/revoke`, {
+      const res = await apiFetch(`/api/admin/users/${userId}/connectors/${provider}/revoke`, {
         method: 'POST'
       });
       const data = await res.json();
@@ -270,7 +271,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     setActionNotice(null);
 
     try {
-      const res = await fetch(`/api/users/${editingUser.id}`, {
+      const res = await apiFetch(`/api/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editFormData)
@@ -293,7 +294,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   const handleToggleRole = async (user: UserItem) => {
     const nextRole = user.role === 'admin' ? 'user' : 'admin';
     try {
-      const res = await fetch(`/api/users/${user.id}`, {
+      const res = await apiFetch(`/api/users/${user.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: nextRole })
@@ -314,7 +315,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   const handleToggleStatus = async (user: UserItem) => {
     const nextStatus = user.status === 'active' ? 'disabled' : 'active';
     try {
-      const res = await fetch(`/api/users/${user.id}/status`, {
+      const res = await apiFetch(`/api/users/${user.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus })
@@ -335,7 +336,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   const handleExecuteDelete = async () => {
     if (!userToDelete) return;
     try {
-      const res = await fetch(`/api/users/${userToDelete.id}`, {
+      const res = await apiFetch(`/api/users/${userToDelete.id}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -355,7 +356,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   const handleUpdateEmergency = async (key: 'pauseNewOAuth' | 'maintenanceMode', val: boolean) => {
     try {
       const payload = { ...emergencyState, [key]: val };
-      const res = await fetch('/api/admin/emergency', {
+      const res = await apiFetch('/api/admin/emergency', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
