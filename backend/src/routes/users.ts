@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { requireAdmin, AuthenticatedRequest } from '../middleware/auth';
+import { requireAdminNetworkAccess } from '../middleware/adminNetwork';
 import { UserService } from '../services/userService';
 import db from '../database/connection';
+import { logAndSendError } from '../utils/security';
 
 const router = Router();
 
-// Apply requireAdmin middleware to all user management routes
+router.use(requireAdminNetworkAccess);
 router.use(requireAdmin);
 
 // GET /api/users — List all users joined with Telegram metadata
@@ -15,7 +17,7 @@ router.get('/', async (req, res) => {
     const users = await UserService.getUsersWithTelegram({ search, status, role });
     res.json(users);
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch users' });
+    return logAndSendError(res, err, 'Failed to fetch users');
   }
 });
 
@@ -33,7 +35,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json(user);
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch user' });
+    return logAndSendError(res, err, 'Failed to fetch user');
   }
 });
 
@@ -63,7 +65,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
     res.json(updated);
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to update user' });
+    return logAndSendError(res, err, 'Failed to update user');
   }
 });
 
@@ -96,7 +98,7 @@ router.patch('/:id/status', async (req: AuthenticatedRequest, res) => {
 
     res.json({ success: true, id: userId, status });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to update user status' });
+    return logAndSendError(res, err, 'Failed to update user status');
   }
 });
 
@@ -124,7 +126,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res) => {
 
     res.json({ success: true, message: `User #${userId} deleted successfully` });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to delete user' });
+    return logAndSendError(res, err, 'Failed to delete user');
   }
 });
 

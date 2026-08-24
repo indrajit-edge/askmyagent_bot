@@ -34,6 +34,8 @@ export default function Login({ onLoginSuccess, onNavigateHome }: LoginProps) {
 
       if (res.ok && data.success) {
         onLoginSuccess();
+      } else if (res.status === 403) {
+        setError('Admin access is restricted to the authorized network.');
       } else {
         setError(data.error || 'Invalid credentials. Please verify your credentials.');
       }

@@ -1,16 +1,19 @@
 import { Router } from 'express';
 import { generateAdminToken } from '../utils/auth';
 import { requireAdmin, AuthenticatedRequest } from '../middleware/auth';
+import { requireAdminNetworkAccess } from '../middleware/adminNetwork';
 import { UserService } from '../services/userService';
 import { GoogleConnectorRegistry } from '../connectors/registry';
 import { GoogleTokenStore } from '../oauth/tokenStore';
 import db from '../database/connection';
-import fs from 'fs';
-import path from 'path';
+import { checkDatabaseConnectivity, getDatabaseSizeKb } from '../database/health';
+import { logAndSendError } from '../utils/security';
 
 import rateLimit from 'express-rate-limit';
 
 const router = Router();
+
+router.use(requireAdminNetworkAccess);
 
 // Rate limiter for admin authentication (SEC-005)
 export const adminLoginLimiter = rateLimit({
@@ -150,7 +153,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
       }
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch dashboard statistics' });
+    return logAndSendError(res, err, 'Failed to fetch dashboard statistics');
   }
 });
 
@@ -168,7 +171,7 @@ router.get('/users/:id/profile', requireAdmin, async (req, res) => {
     }
     res.json({ success: true, profile });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch user profile' });
+    return logAndSendError(res, err, 'Failed to fetch user profile');
   }
 });
 
@@ -203,7 +206,7 @@ router.post('/users/:id/connectors/:provider/revoke', requireAdmin, async (req: 
 
     res.json({ success: true, message: `Successfully revoked ${provider} connection for user #${userId}` });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to revoke connector' });
+    return logAndSendError(res, err, 'Failed to revoke connector');
   }
 });
 
@@ -274,7 +277,7 @@ router.get('/connectors', requireAdmin, async (req, res) => {
 
     res.json({ success: true, connectors: connectorsData });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch connector center metrics' });
+    return logAndSendError(res, err, 'Failed to fetch connector center metrics');
   }
 });
 
@@ -285,6 +288,7 @@ router.get('/security/events', requireAdmin, async (req, res) => {
       .whereIn('operation', [
         'ADMIN_LOGIN_FAILURE',
         'ADMIN_LOGIN_SUCCESS',
+        'ADMIN_IP_DENIED',
         'CONNECTOR_REVOKED',
         'quota_check',
         'oauth_callback'
@@ -297,7 +301,7 @@ router.get('/security/events', requireAdmin, async (req, res) => {
     const events = rawEvents.map((e) => {
       let severity: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL' = 'INFO';
 
-      if (e.operation === 'ADMIN_LOGIN_FAILURE') severity = 'WARNING';
+      if (e.operation === 'ADMIN_LOGIN_FAILURE' || e.operation === 'ADMIN_IP_DENIED') severity = 'WARNING';
       else if (e.status === 'quota_limit') severity = 'WARNING';
       else if (e.status === 'error') severity = 'ERROR';
       else if (e.operation === 'CONNECTOR_REVOKED') severity = 'INFO';
@@ -316,7 +320,7 @@ router.get('/security/events', requireAdmin, async (req, res) => {
 
     res.json({ success: true, events });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch security events' });
+    return logAndSendError(res, err, 'Failed to fetch security events');
   }
 });
 
@@ -326,22 +330,21 @@ router.get('/system/health', requireAdmin, async (req, res) => {
     const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
     const memoryUsageMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
 
-    let dbSizeKb = 0;
+    let databaseStatus: 'HEALTHY' | 'UNHEALTHY' = 'HEALTHY';
+    let dbSizeKb: number | null = null;
     try {
-      const dbUrl = process.env.DATABASE_URL;
-      if (dbUrl && (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://'))) {
-        const pgSizeResult = await db.raw('SELECT pg_database_size(current_database()) as size_bytes;');
-        const bytes = parseInt(pgSizeResult.rows?.[0]?.size_bytes || '0', 10);
-        dbSizeKb = Math.round(bytes / 1024);
-      } else {
-        const dbPath = path.join(__dirname, '../../database.sqlite');
-        if (fs.existsSync(dbPath)) {
-          const stats = fs.statSync(dbPath);
-          dbSizeKb = Math.round(stats.size / 1024);
-        }
+      await checkDatabaseConnectivity();
+    } catch (err) {
+      console.error('[AdminHealth] Database connectivity check failed:', err);
+      databaseStatus = 'UNHEALTHY';
+    }
+
+    if (databaseStatus === 'HEALTHY') {
+      try {
+        dbSizeKb = await getDatabaseSizeKb();
+      } catch (err) {
+        console.warn('[AdminHealth] Database size unavailable:', err);
       }
-    } catch {
-      // Ignore
     }
 
     const hasTelegramToken = !!process.env.TELEGRAM_BOT_TOKEN;
@@ -352,7 +355,7 @@ router.get('/system/health', requireAdmin, async (req, res) => {
       success: true,
       health: {
         backend: 'HEALTHY',
-        database: 'HEALTHY',
+        database: databaseStatus,
         telegram: hasTelegramToken ? 'HEALTHY' : 'WARNING',
         googleOAuth: hasGoogleOauth ? 'HEALTHY' : 'WARNING',
         gemini: hasGeminiKey ? 'HEALTHY' : 'USER_MANAGED',
@@ -363,26 +366,14 @@ router.get('/system/health', requireAdmin, async (req, res) => {
       }
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch system health' });
+    return logAndSendError(res, err, 'Failed to fetch system health');
   }
 });
 
 // Backup Status Oversight
 router.get('/system/backup-status', requireAdmin, async (req, res) => {
   try {
-    let dbSizeKb = 0;
-    const dbUrl = process.env.DATABASE_URL;
-    if (dbUrl && (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://'))) {
-      const pgSizeResult = await db.raw('SELECT pg_database_size(current_database()) as size_bytes;').catch(() => null);
-      const bytes = parseInt(pgSizeResult?.rows?.[0]?.size_bytes || '0', 10);
-      dbSizeKb = Math.round(bytes / 1024);
-    } else {
-      const dbPath = path.join(__dirname, '../../database.sqlite');
-      if (fs.existsSync(dbPath)) {
-        const stats = fs.statSync(dbPath);
-        dbSizeKb = Math.round(stats.size / 1024);
-      }
-    }
+    const dbSizeKb = await getDatabaseSizeKb().catch(() => null);
 
     res.json({
       success: true,
@@ -396,7 +387,7 @@ router.get('/system/backup-status', requireAdmin, async (req, res) => {
       }
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch backup status' });
+    return logAndSendError(res, err, 'Failed to fetch backup status');
   }
 });
 
@@ -433,7 +424,7 @@ router.get('/audit-logs', requireAdmin, async (req, res) => {
     const logs = await db('api_logs').select('*').orderBy('timestamp', 'desc').limit(100);
     res.json({ success: true, logs });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to fetch audit logs' });
+    return logAndSendError(res, err, 'Failed to fetch audit logs');
   }
 });
 

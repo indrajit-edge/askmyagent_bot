@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { Response } from 'express';
 
 const LOCALHOST_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 
@@ -71,4 +72,13 @@ export function validatePublicHttpsUrl(rawUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+export function safeErrorMessage(fallback: string): string {
+  return process.env.NODE_ENV === 'production' ? 'Internal server error' : fallback;
+}
+
+export function logAndSendError(res: Response, err: unknown, fallback: string, status = 500) {
+  console.error(`[API Error] ${fallback}:`, err);
+  return res.status(status).json({ error: safeErrorMessage(fallback) });
 }

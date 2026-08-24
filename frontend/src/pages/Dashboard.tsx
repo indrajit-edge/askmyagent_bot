@@ -183,6 +183,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         return;
       }
 
+      if (usersRes.status === 403 || statsRes.status === 403) {
+        setError('Admin access is restricted to the authorized network.');
+        setLoading(false);
+        return;
+      }
+
       if (!usersRes.ok) {
         throw new Error(`Failed to load control center data (Status ${usersRes.status})`);
       }
@@ -379,6 +385,31 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     if (h > 0) return `${h}h ${m}m`;
     return `${m}m ${sec % 60}s`;
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-rose-600/10 rounded-full blur-[140px] pointer-events-none -z-10" />
+        <div className="w-full max-w-md">
+          <Card className="border-rose-500/20 bg-slate-900/80 shadow-2xl backdrop-blur-2xl text-center p-6">
+            <div className="mx-auto h-12 w-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mb-4 text-rose-400">
+              <ShieldAlert className="h-6 w-6" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Access Restricted</h2>
+            <p className="text-sm text-slate-400 mb-6">{error}</p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" size="sm" onClick={onNavigateHome}>
+                Return to Home
+              </Button>
+              <Button variant="secondary" size="sm" onClick={fetchData}>
+                Retry
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col relative overflow-hidden font-sans">

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { GoogleOAuthService } from '../oauth/oauthService';
-import { isAllowedOrigin } from '../utils/security';
+import { isAllowedOrigin, safeErrorMessage } from '../utils/security';
 
 const router = Router();
 
@@ -22,8 +22,9 @@ router.post('/callback', async (req, res) => {
       email: result.email
     });
   } catch (err: any) {
+    console.error('[OAuth] Callback failed:', err);
     return res.status(400).json({
-      error: err.message || 'Failed to finalize Google Workspace authorization.'
+      error: safeErrorMessage('Failed to finalize Google Workspace authorization.')
     });
   }
 });
@@ -43,7 +44,8 @@ router.get('/callback', async (req, res) => {
     const result = await GoogleOAuthService.handleCallback(code, state);
     return res.redirect(`${frontendUrl}/oauth/callback?status=success&provider=${encodeURIComponent(result.provider)}&email=${encodeURIComponent(result.email)}`);
   } catch (err: any) {
-    return res.redirect(`${frontendUrl}/oauth/callback?status=error&error=${encodeURIComponent(err.message || 'OAuth authorization failed.')}`);
+    console.error('[OAuth] Direct callback failed:', err);
+    return res.redirect(`${frontendUrl}/oauth/callback?status=error&error=${encodeURIComponent(safeErrorMessage('OAuth authorization failed.'))}`);
   }
 });
 

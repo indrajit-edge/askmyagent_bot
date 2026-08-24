@@ -1,9 +1,8 @@
+import './config/env';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
-import path from 'path';
 import db from './database/connection';
 import adminRouter from './routes/admin';
 import usersRouter from './routes/users';
@@ -13,9 +12,7 @@ import { TelegramBotService } from './bot/telegramService';
 import { validateEncryptionConfig } from './utils/crypto';
 import { validateAuthConfig } from './utils/auth';
 import { getAllowedOrigins, isAllowedOrigin } from './utils/security';
-
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-dotenv.config();
+import { checkDatabaseConnectivity } from './database/health';
 
 // Fail fast on critical security configuration in production (SEC-006, SEC-007)
 try {
@@ -30,6 +27,12 @@ try {
 
 const app = express();
 const port = process.env.PORT || 4000;
+
+// Configure Express trust proxy for Koyeb reverse proxy (1 hop) or configurable TRUST_PROXY (SEC-008)
+const trustProxyConfig = process.env.TRUST_PROXY
+  ? (process.env.TRUST_PROXY === 'true' ? true : (process.env.TRUST_PROXY === 'false' ? false : (isNaN(Number(process.env.TRUST_PROXY)) ? process.env.TRUST_PROXY : Number(process.env.TRUST_PROXY))))
+  : 1;
+app.set('trust proxy', trustProxyConfig);
 
 // HTTP Security Headers (SEC-009)
 app.use(helmet({
@@ -54,12 +57,18 @@ console.log(`[Security] CORS allowed origins: ${getAllowedOrigins().join(', ')}`
 app.use(express.json());
 app.use(cookieParser());
 
-// Auto-run migrations on server boot
-db.migrate.latest().then(() => {
-  console.log('[Database] Migrations applied successfully.');
-}).catch((err) => {
-  console.error('[Database] Migration error:', err);
-});
+export async function runStartupMigrations(): Promise<void> {
+  try {
+    await db.migrate.latest();
+    console.log('[Database] Migrations applied successfully.');
+  } catch (err) {
+    console.error('[Database] Migration error:', err);
+    if (process.env.NODE_ENV === 'production') {
+      process.exitCode = 1;
+      throw err;
+    }
+  }
+}
 
 // API Routes
 app.use('/api/admin', adminRouter);
@@ -70,7 +79,7 @@ app.use('/api/bot', botRouter);
 // Health check endpoints (supporting both Koyeb /api/health and standard /health)
 const healthHandler = async (req: express.Request, res: express.Response) => {
   try {
-    await db.raw('SELECT 1');
+    await checkDatabaseConnectivity();
     return res.json({
       status: 'ok',
       service: 'AskMyAgent Workspace Connector Backend',
@@ -90,7 +99,9 @@ const healthHandler = async (req: express.Request, res: express.Response) => {
 app.get('/api/health', healthHandler);
 app.get('/health', healthHandler);
 
-if (process.env.NODE_ENV !== 'test') {
+export async function startServer(): Promise<void> {
+  await runStartupMigrations();
+
   app.listen(port, () => {
     console.log(`[AskMyAgent] Backend server running on http://localhost:${port}`);
 
@@ -105,6 +116,14 @@ if (process.env.NODE_ENV !== 'test') {
       }
     } else {
       console.log('[TelegramBot] Tip: Set TELEGRAM_BOT_TOKEN in .env to connect your live Telegram bot.');
+    }
+  });
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  startServer().catch(() => {
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
     }
   });
 }

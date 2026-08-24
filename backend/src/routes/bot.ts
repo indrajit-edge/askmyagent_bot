@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import { TelegramWebhookController } from '../bot/webhook';
 import { TelegramBotService } from '../bot/telegramService';
 import { requireAdmin } from '../middleware/auth';
-import { validatePublicHttpsUrl } from '../utils/security';
+import { requireAdminNetworkAccess } from '../middleware/adminNetwork';
+import { logAndSendError, validatePublicHttpsUrl } from '../utils/security';
 
 const router = Router();
 
@@ -53,12 +54,12 @@ router.post('/webhook', verifyTelegramWebhookSecret, async (req, res) => {
 
     return res.json({ success: true, ...result });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Webhook processing error' });
+    return logAndSendError(res, err, 'Webhook processing error');
   }
 });
 
 // Configure Telegram Webhook pointing to VM server (Protected: Admin Only - SEC-002)
-router.post('/set-webhook', requireAdmin, async (req, res) => {
+router.post('/set-webhook', requireAdminNetworkAccess, requireAdmin, async (req, res) => {
   const { webhookUrl } = req.body;
   if (!webhookUrl) {
     return res.status(400).json({ error: 'webhookUrl is required (e.g. https://your-domain.com/api/bot/webhook)' });
@@ -74,7 +75,7 @@ router.post('/set-webhook', requireAdmin, async (req, res) => {
 });
 
 // Clear Webhook (Protected: Admin Only - SEC-002)
-router.post('/delete-webhook', requireAdmin, async (req, res) => {
+router.post('/delete-webhook', requireAdminNetworkAccess, requireAdmin, async (req, res) => {
   const ok = await TelegramBotService.deleteWebhook();
   return res.json({ ok, message: ok ? 'Webhook cleared. Polling mode available.' : 'Failed to clear webhook.' });
 });
@@ -112,7 +113,7 @@ router.post('/simulate', async (req, res) => {
 
     return res.json({ success: true, ...result });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Simulation error' });
+    return logAndSendError(res, err, 'Simulation error');
   }
 });
 

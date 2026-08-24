@@ -1,3 +1,4 @@
+import '../config/env';
 import { Knex } from 'knex';
 import path from 'path';
 import * as initSchema from './migrations/20260824000000_init_schema';
