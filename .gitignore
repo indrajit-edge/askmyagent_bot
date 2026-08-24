@@ -33,6 +33,7 @@ frontend/.env
 .vscode/*
 !.vscode/extensions.json
 /docs/
+PRD.md
 
 # Logs
 logs/
