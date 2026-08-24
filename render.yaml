@@ -7,7 +7,7 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    buildCommand: npm install && npm run build --workspace=backend
+    buildCommand: npm install --include=dev && npm run build --workspace=backend
     startCommand: npm run start --workspace=backend
     healthCheckPath: /api/health
     autoDeploy: true

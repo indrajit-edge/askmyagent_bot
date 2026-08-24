@@ -7,7 +7,7 @@ export function getAllowedOrigins(): string[] {
   const raw = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173';
   return raw
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin: string) => origin.trim())
     .filter(Boolean);
 }
 

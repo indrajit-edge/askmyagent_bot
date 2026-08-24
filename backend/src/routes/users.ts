@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { requireAdmin, AuthenticatedRequest } from '../middleware/auth';
 import { requireAdminNetworkAccess } from '../middleware/adminNetwork';
 import { UserService } from '../services/userService';
@@ -11,7 +11,7 @@ router.use(requireAdminNetworkAccess);
 router.use(requireAdmin);
 
 // GET /api/users — List all users joined with Telegram metadata
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const { search, status, role } = req.query as Record<string, string>;
     const users = await UserService.getUsersWithTelegram({ search, status, role });
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/users/:id — Get single user with Telegram metadata
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response) => {
   const userId = parseInt(req.params.id, 10);
   if (isNaN(userId)) {
     return res.status(400).json({ error: 'Valid numeric user ID is required' });
@@ -40,7 +40,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // PATCH /api/users/:id — Update user details (name, role, status)
-router.patch('/:id', async (req: AuthenticatedRequest, res) => {
+router.patch('/:id', async (req: AuthenticatedRequest, res: Response) => {
   const userId = parseInt(req.params.id, 10);
   if (isNaN(userId)) {
     return res.status(400).json({ error: 'Valid numeric user ID is required' });
@@ -70,7 +70,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 });
 
 // PATCH /api/users/:id/status — Quick toggle/update status ('active' / 'disabled')
-router.patch('/:id/status', async (req: AuthenticatedRequest, res) => {
+router.patch('/:id/status', async (req: AuthenticatedRequest, res: Response) => {
   const userId = parseInt(req.params.id, 10);
   if (isNaN(userId)) {
     return res.status(400).json({ error: 'Valid numeric user ID is required' });
@@ -103,7 +103,7 @@ router.patch('/:id/status', async (req: AuthenticatedRequest, res) => {
 });
 
 // DELETE /api/users/:id — Delete user (with audit log)
-router.delete('/:id', async (req: AuthenticatedRequest, res) => {
+router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
   const userId = parseInt(req.params.id, 10);
   if (isNaN(userId)) {
     return res.status(400).json({ error: 'Valid numeric user ID is required' });

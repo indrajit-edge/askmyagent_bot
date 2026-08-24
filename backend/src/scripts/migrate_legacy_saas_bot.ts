@@ -32,7 +32,7 @@ async function runMigration() {
   const isDryRun = args.includes('--dry-run');
 
   let sourcePath = '';
-  const sourceArg = args.find((a) => a.startsWith('--source='));
+  const sourceArg = args.find((a: string) => a.startsWith('--source='));
   if (sourceArg) {
     sourcePath = path.resolve(sourceArg.split('=')[1]);
   } else {
