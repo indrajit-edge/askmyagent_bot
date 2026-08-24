@@ -28,10 +28,11 @@ try {
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Configure Express trust proxy for Render / reverse proxy (1 hop) or configurable TRUST_PROXY (SEC-008)
+// Configure Express trust proxy for Render / reverse proxy
+// Default to 'loopback, linklocal, uniquelocal' to trust internal private subnets and resolve the real client IP (SEC-008)
 const trustProxyConfig = process.env.TRUST_PROXY
   ? (process.env.TRUST_PROXY === 'true' ? true : (process.env.TRUST_PROXY === 'false' ? false : (isNaN(Number(process.env.TRUST_PROXY)) ? process.env.TRUST_PROXY : Number(process.env.TRUST_PROXY))))
-  : 1;
+  : 'loopback, linklocal, uniquelocal';
 app.set('trust proxy', trustProxyConfig);
 
 // HTTP Security Headers (SEC-009)

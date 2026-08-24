@@ -40,9 +40,66 @@ export function parseAllowedIps(raw?: string): string[] {
 }
 
 /**
- * Extracts and normalizes the client IP from Express request.
+ * Checks whether an IP address is a private/internal or loopback address.
+ */
+export function isPrivateIp(ip: string): boolean {
+  const normalized = normalizeIp(ip);
+  if (!isValidIp(normalized)) return true;
+
+  if (net.isIP(normalized) === 4) {
+    if (normalized.startsWith('10.')) return true;
+    if (normalized.startsWith('127.')) return true;
+    if (normalized.startsWith('192.168.')) return true;
+    if (normalized.startsWith('169.254.')) return true;
+    if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(normalized)) return true;
+    if (/^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(normalized)) return true;
+    return false;
+  }
+
+  const lower = normalized.toLowerCase();
+  if (lower === '::1' || lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80')) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Extracts and normalizes the client IP from Express request, properly unwrapping
+ * cloud reverse proxy and edge headers if req.ip resolves to an internal network address.
  */
 export function extractClientIp(req: Request): string {
+  const expressIp = req.ip ? normalizeIp(req.ip) : '';
+  if (expressIp && isValidIp(expressIp) && !isPrivateIp(expressIp)) {
+    return expressIp;
+  }
+
+  // Edge proxy headers (Cloudflare, Render edge, CDN)
+  const cfIp = req.headers['cf-connecting-ip'];
+  if (typeof cfIp === 'string') {
+    const norm = normalizeIp(cfIp);
+    if (isValidIp(norm) && !isPrivateIp(norm)) return norm;
+  }
+
+  const trueClientIp = req.headers['true-client-ip'];
+  if (typeof trueClientIp === 'string') {
+    const norm = normalizeIp(trueClientIp);
+    if (isValidIp(norm) && !isPrivateIp(norm)) return norm;
+  }
+
+  const xRealIp = req.headers['x-real-ip'];
+  if (typeof xRealIp === 'string') {
+    const norm = normalizeIp(xRealIp);
+    if (isValidIp(norm) && !isPrivateIp(norm)) return norm;
+  }
+
+  const xff = req.headers['x-forwarded-for'];
+  if (typeof xff === 'string') {
+    const ips = xff.split(',').map((s: string) => normalizeIp(s.trim())).filter(isValidIp);
+    const firstPublic = ips.find((ip: string) => !isPrivateIp(ip));
+    if (firstPublic) return firstPublic;
+  }
+
   const rawIp = req.ip || req.socket?.remoteAddress || 'unknown';
   return normalizeIp(rawIp);
 }
