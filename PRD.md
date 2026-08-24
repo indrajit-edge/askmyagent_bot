@@ -829,7 +829,7 @@ User:
 
 Bot:
 
-"You're about to send this email to Rahul@example.com.
+"You're about to send this email to recipient@example.invalid.
 
 [ Confirm Send ]
 [ Cancel ]"

@@ -1,0 +1,23 @@
+[Unit]
+Description=AskMyAgent Google Workspace Connector & Telegram Bot Backend
+After=network.target
+
+[Service]
+Type=simple
+User=askmyagent
+WorkingDirectory=/opt/askmyagent/backend
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/askmyagent/backend/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=askmyagent-bot
+
+# Security Sandbox
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
