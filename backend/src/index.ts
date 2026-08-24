@@ -28,7 +28,7 @@ try {
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Configure Express trust proxy for Koyeb reverse proxy (1 hop) or configurable TRUST_PROXY (SEC-008)
+// Configure Express trust proxy for Render / reverse proxy (1 hop) or configurable TRUST_PROXY (SEC-008)
 const trustProxyConfig = process.env.TRUST_PROXY
   ? (process.env.TRUST_PROXY === 'true' ? true : (process.env.TRUST_PROXY === 'false' ? false : (isNaN(Number(process.env.TRUST_PROXY)) ? process.env.TRUST_PROXY : Number(process.env.TRUST_PROXY))))
   : 1;
@@ -76,7 +76,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/oauth', oauthRouter);
 app.use('/api/bot', botRouter);
 
-// Health check endpoints (supporting both Koyeb /api/health and standard /health)
+// Health check endpoints (supporting Render /api/health and standard /health)
 const healthHandler = async (req: express.Request, res: express.Response) => {
   try {
     await checkDatabaseConnectivity();
@@ -99,11 +99,13 @@ const healthHandler = async (req: express.Request, res: express.Response) => {
 app.get('/api/health', healthHandler);
 app.get('/health', healthHandler);
 
-export async function startServer(): Promise<void> {
+let server: any;
+
+export async function startServer(): Promise<any> {
   await runStartupMigrations();
 
-  app.listen(port, () => {
-    console.log(`[AskMyAgent] Backend server running on http://localhost:${port}`);
+  server = app.listen(Number(port), '0.0.0.0', () => {
+    console.log(`[AskMyAgent] Backend server running on http://0.0.0.0:${port}`);
 
     // Auto-connect Telegram bot based on configuration
     if (process.env.TELEGRAM_BOT_TOKEN) {
@@ -118,9 +120,32 @@ export async function startServer(): Promise<void> {
       console.log('[TelegramBot] Tip: Set TELEGRAM_BOT_TOKEN in .env to connect your live Telegram bot.');
     }
   });
+
+  return server;
 }
 
+const handleShutdown = async (signal: string) => {
+  console.log(`[Server] Received ${signal}. Starting graceful shutdown...`);
+  if (server) {
+    server.close(async () => {
+      console.log('[Server] HTTP server closed.');
+      try {
+        await db.destroy();
+        console.log('[Database] Knex connection pool closed.');
+      } catch (err) {
+        console.error('[Database] Error closing Knex pool during shutdown:', err);
+      }
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+};
+
 if (process.env.NODE_ENV !== 'test') {
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
+
   startServer().catch(() => {
     if (process.env.NODE_ENV === 'production') {
       process.exit(1);

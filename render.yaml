@@ -1,0 +1,51 @@
+# ==============================================================================
+# Render Production Infrastructure Blueprint for AskMyAgent Backend
+# ==============================================================================
+services:
+  - type: web
+    name: askmyagent-backend
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm install && npm run build --workspace=backend
+    startCommand: npm run start --workspace=backend
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://askmyagent.com
+      - key: CORS_ORIGIN
+        value: https://askmyagent.com
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DB_SSL
+        value: "true"
+      - key: TELEGRAM_WEBHOOK_URL
+        value: https://api.askmyagent.com/api/bot/webhook
+      - key: GOOGLE_REDIRECT_URI
+        value: https://api.askmyagent.com/api/oauth/callback
+      # Secrets to be configured in Render Dashboard (sync: false prevents exposing values in repo)
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: ADMIN_ALLOWED_IPS
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
