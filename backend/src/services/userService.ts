@@ -99,12 +99,17 @@ export class UserService {
       }
 
       // Create new user in users table
-      const [userId] = await trx('users').insert({
-        name: displayName,
-        email: null,
-        role: 'user',
-        status: 'active'
-      });
+      // .returning('id') is required on PostgreSQL; normalize across drivers.
+      const insertedIds = await trx('users')
+        .insert({
+          name: displayName,
+          email: null,
+          role: 'user',
+          status: 'active'
+        })
+        .returning('id');
+      const firstId = Array.isArray(insertedIds) ? insertedIds[0] : insertedIds;
+      const userId: number = typeof firstId === 'object' && firstId !== null ? (firstId as any).id : Number(firstId);
 
       // Insert telegram_users linked to user_id
       await trx('telegram_users').insert({

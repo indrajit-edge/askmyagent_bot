@@ -7,8 +7,7 @@ import db from './database/connection';
 import adminRouter from './routes/admin';
 import usersRouter from './routes/users';
 import oauthRouter from './routes/oauth';
-import botRouter from './routes/bot';
-import { TelegramBotService } from './bot/telegramService';
+import internalRouter from './routes/internal';
 import { validateEncryptionConfig } from './utils/crypto';
 import { validateAuthConfig } from './utils/auth';
 import { getAllowedOrigins, isAllowedOrigin } from './utils/security';
@@ -52,7 +51,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Telegram-Bot-Api-Secret-Token', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Internal-Token', 'Accept']
 }));
 console.log(`[Security] CORS allowed origins: ${getAllowedOrigins().join(', ')}`);
 app.use(express.json());
@@ -75,7 +74,9 @@ export async function runStartupMigrations(): Promise<void> {
 app.use('/api/admin', adminRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/oauth', oauthRouter);
-app.use('/api/bot', botRouter);
+// Internal API for the VM Telegram bot (Google Workspace tool calls + OAuth).
+// The backend is NOT a Telegram listener — it never calls the Bot API.
+app.use('/api/internal', internalRouter);
 
 // Health check endpoints (supporting Render /api/health and standard /health)
 const healthHandler = async (req: express.Request, res: express.Response) => {
@@ -107,19 +108,7 @@ export async function startServer(): Promise<any> {
 
   server = app.listen(Number(port), '0.0.0.0', () => {
     console.log(`[AskMyAgent] Backend server running on http://0.0.0.0:${port}`);
-
-    // Auto-connect Telegram bot based on configuration
-    if (process.env.TELEGRAM_BOT_TOKEN) {
-      if (process.env.TELEGRAM_WEBHOOK_URL) {
-        console.log('[TelegramBot] Configuring webhook from TELEGRAM_WEBHOOK_URL.');
-        TelegramBotService.setWebhook(process.env.TELEGRAM_WEBHOOK_URL);
-      } else {
-        console.log('[TelegramBot] Starting long-polling service...');
-        TelegramBotService.startPolling();
-      }
-    } else {
-      console.log('[TelegramBot] Tip: Set TELEGRAM_BOT_TOKEN in .env to connect your live Telegram bot.');
-    }
+    console.log('[AskMyAgent] Telegram traffic is handled by the VM bot; this service exposes /api/internal only.');
   });
 
   return server;

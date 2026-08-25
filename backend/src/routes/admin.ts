@@ -142,6 +142,21 @@ router.get('/stats', requireAdmin, async (req, res) => {
       .count('* as count')
       .groupBy('status');
 
+    // Read-only integration with VM-bot-owned tables (Option A).
+    // The Python bot owns bot_users/bot_usage; they may not exist in every environment.
+    let botIntegration: { botUsers: number; botUsageRows: number } | null = null;
+    try {
+      const hasBotUsers = await db.schema.hasTable('bot_users');
+      const hasBotUsage = await db.schema.hasTable('bot_usage');
+      if (hasBotUsers || hasBotUsage) {
+        const botUsersCount = hasBotUsers ? Number((await db('bot_users').count('* as count').first())?.count || 0) : 0;
+        const botUsageCount = hasBotUsage ? Number((await db('bot_usage').count('* as count').first())?.count || 0) : 0;
+        botIntegration = { botUsers: botUsersCount, botUsageRows: botUsageCount };
+      }
+    } catch (botErr: any) {
+      console.warn('[AdminStats] bot_* integration tables unavailable:', botErr.message);
+    }
+
     res.json({
       success: true,
       stats: {
@@ -149,7 +164,8 @@ router.get('/stats', requireAdmin, async (req, res) => {
         totalConnections: Number(totalConnectionsResult?.count || 0),
         totalApiCalls: Number(totalLogsResult?.count || 0),
         connectionsByProvider,
-        logsByStatus
+        logsByStatus,
+        ...(botIntegration ? { botIntegration } : {})
       }
     });
   } catch (err: any) {
@@ -347,7 +363,7 @@ router.get('/system/health', requireAdmin, async (req, res) => {
       }
     }
 
-    const hasTelegramToken = !!process.env.TELEGRAM_BOT_TOKEN;
+    const hasInternalToken = !!process.env.INTERNAL_API_TOKEN;
     const hasGoogleOauth = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
     const hasGeminiKey = !!process.env.GEMINI_API_KEY;
 
@@ -356,7 +372,9 @@ router.get('/system/health', requireAdmin, async (req, res) => {
       health: {
         backend: 'HEALTHY',
         database: databaseStatus,
-        telegram: hasTelegramToken ? 'HEALTHY' : 'WARNING',
+        internalApi: process.env.NODE_ENV === 'production'
+          ? (hasInternalToken ? 'HEALTHY' : 'MISCONFIGURED')
+          : 'HEALTHY',
         googleOAuth: hasGoogleOauth ? 'HEALTHY' : 'WARNING',
         gemini: hasGeminiKey ? 'HEALTHY' : 'USER_MANAGED',
         uptimeSeconds,

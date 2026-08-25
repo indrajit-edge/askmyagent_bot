@@ -90,7 +90,7 @@ interface SecurityEvent {
 interface SystemHealth {
   backend: string;
   database: string;
-  telegram: string;
+  internalApi: string;
   googleOAuth: string;
   gemini: string;
   uptimeSeconds: number;

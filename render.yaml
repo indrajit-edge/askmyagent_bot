@@ -22,8 +22,6 @@ services:
         value: "1"
       - key: DB_SSL
         value: "true"
-      - key: TELEGRAM_WEBHOOK_URL
-        value: https://api.askmyagent.com/api/bot/webhook
       - key: GOOGLE_REDIRECT_URI
         value: https://api.askmyagent.com/api/oauth/callback
       # Secrets to be configured in Render Dashboard (sync: false prevents exposing values in repo)
@@ -39,9 +37,7 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_WEBHOOK_SECRET
+      - key: INTERNAL_API_TOKEN
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false

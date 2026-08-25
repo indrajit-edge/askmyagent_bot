@@ -6,6 +6,7 @@ import * as alignUsersTelegramSchema from './migrations/20260824010000_align_use
 import * as addChatIdColumn from './migrations/20260824020000_add_chat_id_column';
 import * as addIndexes from './migrations/20260824030000_add_indexes';
 import * as postgresIndexesAndTypes from './migrations/20260824040000_postgres_indexes_and_types';
+import * as widenTelegramIds from './migrations/20260825000000_widen_telegram_ids_to_bigint';
 
 export const migrationSource = {
   getMigrations() {
@@ -14,7 +15,8 @@ export const migrationSource = {
       '20260824010000_align_users_telegram_schema',
       '20260824020000_add_chat_id_column',
       '20260824030000_add_indexes',
-      '20260824040000_postgres_indexes_and_types'
+      '20260824040000_postgres_indexes_and_types',
+      '20260825000000_widen_telegram_ids_to_bigint'
     ]);
   },
   getMigrationName(migration: string) {
@@ -32,6 +34,8 @@ export const migrationSource = {
         return Promise.resolve(addIndexes);
       case '20260824040000_postgres_indexes_and_types':
         return Promise.resolve(postgresIndexesAndTypes);
+      case '20260825000000_widen_telegram_ids_to_bigint':
+        return Promise.resolve(widenTelegramIds);
       default:
         return Promise.reject(new Error(`Unknown migration: ${migration}`));
     }
