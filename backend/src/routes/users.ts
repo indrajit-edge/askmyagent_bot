@@ -10,12 +10,120 @@ const router = Router();
 router.use(requireAdminNetworkAccess);
 router.use(requireAdmin);
 
-// GET /api/users — List all users joined with Telegram metadata
+/**
+ * Read-only view of VM-bot-owned bot_users rows (Option A integration).
+ *
+ * The Python bot creates these rows independently; until VM-bot -> internal-API
+ * identity sync is implemented, we surface them in the admin Users list so the
+ * dashboard shows a complete picture. Column detection is defensive because
+ * the schema is owned by the VM bot and may vary.
+ */
+async function fetchVmBotUsers(): Promise<Record<string, any>[]> {
+  try {
+    const hasTable = await db.schema.hasTable('bot_users');
+    if (!hasTable) return [];
+
+    const colRows = await db.raw(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'bot_users'`
+    );
+    const columns: string[] = colRows.rows
+      ? colRows.rows.map((r: any) => r.column_name)
+      : colRows.map((r: any) => r.column_name);
+
+    if (!columns.includes('chat_id')) return [];
+
+    const safeColumns = ['chat_id']
+      .filter((c) => columns.includes(c))
+      .concat(
+        ['username', 'first_name', 'last_name', 'preferred_model', 'created_at', 'updated_at', 'last_seen_at']
+          .filter((c) => columns.includes(c))
+      );
+    // gemini_api_key / calendar_* values are NEVER selected — only existence flags
+    const hasGeminiKeyCol = columns.includes('gemini_api_key');
+    const hasCalendarCols =
+      columns.includes('calendar_credentials_path') || columns.includes('calendar_id');
+
+    const selects: any[] = [...safeColumns];
+    if (hasGeminiKeyCol) {
+      selects.push(db.raw('(gemini_api_key IS NOT NULL) AS has_gemini_key'));
+    }
+
+    const rows = await db('bot_users').select(selects);
+
+    return rows.map((row: any) => ({
+      ...row,
+      hasGeminiKey: hasGeminiKeyCol ? !!row.has_gemini_key : false,
+      hasCalendarConfig: hasCalendarCols
+    }));
+  } catch (err: any) {
+    console.warn('[UsersList] bot_users read-only integration unavailable:', err.message);
+    return [];
+  }
+}
+
+// GET /api/users — List all users joined with Telegram metadata,
+// merged (read-only) with VM-bot-owned bot_users rows.
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { search, status, role } = req.query as Record<string, string>;
     const users = await UserService.getUsersWithTelegram({ search, status, role });
-    res.json(users);
+
+    const withSource = users.map((u: any) => ({ ...u, source: 'backend' as const }));
+
+    // status/role filters cannot match VM rows (no such columns) — skip merging then.
+    const filtersActive = (status && status !== 'all') || (role && role !== 'all');
+
+    let result: Record<string, any>[] = withSource;
+
+    if (!filtersActive) {
+      const botUsers = await fetchVmBotUsers();
+      const knownChatIds = new Set(
+        withSource.map((u) => String(u.telegram?.telegramId ?? ''))
+      );
+
+      const searchTerm = search?.trim().toLowerCase();
+      const vmItems = botUsers
+        .filter((b) => !knownChatIds.has(String(b.chat_id))) // backend row wins on collision
+        .filter((b) => {
+          if (!searchTerm) return true;
+          const haystack = [
+            b.username,
+            b.first_name,
+            b.last_name,
+            String(b.chat_id)
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          return haystack.includes(searchTerm);
+        })
+        .map((b) => ({
+          id: null, // no backend primary key; VM-managed rows are read-only
+          name:
+            [b.first_name, b.last_name].filter(Boolean).join(' ') ||
+            (b.username ? `@${b.username}` : `Telegram User ${b.chat_id}`),
+          email: null,
+          role: 'user',
+          status: 'active',
+          createdAt: b.created_at || null,
+          updatedAt: b.updated_at || null,
+          telegram: {
+            telegramId: b.chat_id,
+            username: b.username || null,
+            firstName: b.first_name || null,
+            lastName: b.last_name || null,
+            lastSeenAt: b.last_seen_at || b.updated_at || b.created_at || null
+          },
+          preferredModel: b.preferred_model || null,
+          hasGeminiKey: b.hasGeminiKey,
+          hasCalendarConfig: b.hasCalendarConfig,
+          source: 'vm-bot' as const
+        }));
+
+      result = [...withSource, ...vmItems];
+    }
+
+    res.json(result);
   } catch (err: any) {
     return logAndSendError(res, err, 'Failed to fetch users');
   }

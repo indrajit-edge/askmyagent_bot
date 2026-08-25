@@ -23,7 +23,7 @@ interface Stats {
 }
 
 export interface UserItem {
-  id: number;
+  id: number | null; // null for read-only VM-bot rows
   name: string;
   email: string | null;
   role: 'user' | 'admin';
@@ -37,6 +37,12 @@ export interface UserItem {
     lastName: string | null;
     lastSeenAt: string;
   } | null;
+  // Which system created the row: 'backend' = users/telegram_users,
+  // 'vm-bot' = read-only mirror of the VM Python bot's bot_users table.
+  source?: 'backend' | 'vm-bot';
+  preferredModel?: string | null;
+  hasGeminiKey?: boolean;
+  hasCalendarConfig?: boolean;
 }
 
 export interface UserProfileDetails extends UserItem {
@@ -691,7 +697,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               {loading ? (
                 <div className="py-20 text-center text-slate-400">
                   <RefreshCw className="h-8 w-8 animate-spin mx-auto text-indigo-400 mb-3" />
-                  <p className="text-sm">Loading users from SQLite...</p>
+                  <p className="text-sm">Loading users...</p>
                 </div>
               ) : users.length === 0 ? (
                 <div className="py-20 text-center">
@@ -710,6 +716,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                         <th className="pb-3 px-3">Telegram ID</th>
                         <th className="pb-3 px-3">Username</th>
                         <th className="pb-3 px-3">Name</th>
+                        <th className="pb-3 px-3">Source</th>
                         <th className="pb-3 px-3">Role</th>
                         <th className="pb-3 px-3">Status</th>
                         <th className="pb-3 px-3">Last Seen</th>
@@ -718,8 +725,8 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {users.map((u) => (
-                        <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="py-3 px-3 font-mono text-xs text-indigo-300">#{u.id}</td>
+                        <tr key={u.id ?? `vm-${u.telegram?.telegramId}`} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-3 px-3 font-mono text-xs text-indigo-300">{u.id ? `#${u.id}` : '—'}</td>
                           <td className="py-3 px-3 font-mono text-xs text-slate-300">
                             {u.telegram ? u.telegram.telegramId : '—'}
                           </td>
@@ -731,6 +738,17 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                             )}
                           </td>
                           <td className="py-3 px-3 font-medium text-white">{u.name}</td>
+                          <td className="py-3 px-3">
+                            {u.source === 'vm-bot' ? (
+                              <Badge variant="outline" className="text-[11px] uppercase font-mono border-cyan-500/40 text-cyan-300">
+                                VM Bot
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[11px] uppercase font-mono">
+                                Backend
+                              </Badge>
+                            )}
+                          </td>
                           <td className="py-3 px-3">
                             <Badge variant={u.role === 'admin' ? 'purple' : 'outline'} className="text-[11px] uppercase font-mono">
                               {u.role}
@@ -745,6 +763,14 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                             {u.telegram?.lastSeenAt ? new Date(u.telegram.lastSeenAt).toLocaleString() : '—'}
                           </td>
                           <td className="py-3 px-3 text-right">
+                            {u.source === 'vm-bot' ? (
+                              <span
+                                className="text-[11px] italic text-slate-500"
+                                title="Managed by the VM Python bot (read-only mirror). Actions unlock once VM-bot → internal-API identity sync is implemented."
+                              >
+                                Read-only (VM)
+                              </span>
+                            ) : (
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
                                 variant="ghost"
@@ -783,6 +809,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1176,11 +1203,11 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                       </div>
                     </div>
 
-                    {c.connected && (
+                    {c.connected && viewingProfile.id != null && (
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleRevokeConnector(viewingProfile.id, c.name)}
+                        onClick={() => handleRevokeConnector(viewingProfile.id!, c.name)}
                         className="h-7 px-2.5 text-[11px]"
                       >
                         Revoke
