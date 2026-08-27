@@ -23,26 +23,27 @@ export default function PrivacyPolicy({ onNavigateHome, onNavigateTerms }: Priva
       </div>
 
       {/* Top Navbar */}
-      <nav className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/70 backdrop-blur-xl">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <nav className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
+        <div className="max-w-5xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={onNavigateHome} 
-            className="text-slate-300 hover:text-white gap-2"
+            className="text-slate-300 hover:text-white gap-1.5 px-2.5 sm:px-3 text-xs"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Home
+            <span className="hidden sm:inline">Back to Home</span>
+            <span className="sm:hidden">Back</span>
           </Button>
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-indigo-400" />
-            <span className="font-bold text-sm tracking-tight text-white">AskMyAgent Legal</span>
+            <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-400" />
+            <span className="font-bold text-xs sm:text-sm tracking-tight text-white">AskMyAgent Legal</span>
           </div>
           <Button 
             variant="glow" 
             size="sm" 
             onClick={() => window.open(telegramBotUrl, '_blank')}
-            className="gap-1.5 hidden sm:inline-flex"
+            className="gap-1.5 hidden sm:inline-flex text-xs px-3"
           >
             <Send className="h-3.5 w-3.5" />
             Open Bot

@@ -94,21 +94,23 @@ export default function OAuthCallback({ onNavigateHome, onNavigatePrivacy, onNav
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col justify-center items-center px-4 py-8 sm:py-12 relative overflow-hidden font-sans">
       {/* Background ambient glows */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none -z-10 animate-pulse-glow" />
       <div className="absolute inset-0 bg-grid-pattern opacity-30 -z-10" />
 
       {/* Top back button */}
-      <motion.button
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        onClick={onNavigateHome}
-        className="absolute top-6 left-6 inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-white transition-colors p-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Return to Home
-      </motion.button>
+      <div className="w-full max-w-md mb-4 sm:mb-0 sm:absolute sm:top-6 sm:left-6 sm:w-auto">
+        <motion.button
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={onNavigateHome}
+          className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-white transition-colors p-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Return to Home
+        </motion.button>
+      </div>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
