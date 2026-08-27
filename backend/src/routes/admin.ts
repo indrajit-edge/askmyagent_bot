@@ -180,13 +180,13 @@ router.get('/stats', requireAdmin, async (req, res) => {
 
 // Detailed User Profile
 router.get('/users/:id/profile', requireAdmin, async (req, res) => {
-  const userId = parseInt(req.params.id, 10);
-  if (isNaN(userId)) {
-    return res.status(400).json({ error: 'Valid numeric user ID is required' });
+  const paramId = req.params.id;
+  if (!paramId) {
+    return res.status(400).json({ error: 'User identifier is required' });
   }
 
   try {
-    const profile = await UserService.getUserProfile(userId);
+    const profile = await UserService.getUserProfile(paramId);
     if (!profile) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -198,20 +198,20 @@ router.get('/users/:id/profile', requireAdmin, async (req, res) => {
 
 // Revoke a User's Connector Connection
 router.post('/users/:id/connectors/:provider/revoke', requireAdmin, async (req: AuthenticatedRequest, res) => {
-  const userId = parseInt(req.params.id, 10);
+  const paramId = req.params.id;
   const provider = req.params.provider?.toLowerCase();
 
-  if (isNaN(userId) || !provider) {
-    return res.status(400).json({ error: 'Valid user ID and provider are required' });
+  if (!paramId || !provider) {
+    return res.status(400).json({ error: 'Valid user identifier and provider are required' });
   }
 
   try {
-    const user = await UserService.getUserById(userId);
-    if (!user) {
+    const profile = await UserService.getUserProfile(paramId);
+    if (!profile) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const tgId = user.telegram?.telegramId;
+    const tgId = profile.telegram?.telegramId;
     if (tgId) {
       await GoogleTokenStore.disconnectService(tgId, provider);
     }
@@ -222,10 +222,10 @@ router.post('/users/:id/connectors/:provider/revoke', requireAdmin, async (req: 
       connector: provider,
       operation: 'CONNECTOR_REVOKED',
       status: 'success',
-      error_message: `Admin "${req.admin?.username || 'system'}" revoked ${provider} for user #${userId} (${user.name})`
+      error_message: `Admin "${req.admin?.username || 'system'}" revoked ${provider} for user ${profile.name} (Telegram ${tgId || 'None'})`
     });
 
-    res.json({ success: true, message: `Successfully revoked ${provider} connection for user #${userId}` });
+    res.json({ success: true, message: `Successfully revoked ${provider} connection for ${profile.name}` });
   } catch (err: any) {
     return logAndSendError(res, err, 'Failed to revoke connector');
   }

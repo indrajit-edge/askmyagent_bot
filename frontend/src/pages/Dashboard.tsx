@@ -245,7 +245,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   // Open Full User Profile
   const handleOpenProfile = async (user: UserItem) => {
     try {
-      const res = await apiFetch(`/api/admin/users/${user.id}/profile`);
+      const identifier = user.id ?? user.telegram?.telegramId;
+      if (!identifier) {
+        setActionNotice({ type: 'error', text: 'No identifier available for user.' });
+        return;
+      }
+      const res = await apiFetch(`/api/admin/users/${identifier}/profile`);
       if (res.ok) {
         const data = await res.json();
         setViewingProfile(data.profile);
@@ -258,16 +263,23 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   };
 
   // Revoke User Connector
-  const handleRevokeConnector = async (userId: number, provider: string) => {
+  const handleRevokeConnector = async (userId: number | string, provider: string) => {
     try {
       const res = await apiFetch(`/api/admin/users/${userId}/connectors/${provider}/revoke`, {
         method: 'POST'
       });
       const data = await res.json();
       if (res.ok) {
-        setActionNotice({ type: 'success', text: `Revoked ${provider} connection for user #${userId}.` });
-        if (viewingProfile && viewingProfile.id === userId) {
-          handleOpenProfile(viewingProfile);
+        setActionNotice({ type: 'success', text: `Revoked ${provider} connection for user.` });
+        if (viewingProfile) {
+          const identifier = viewingProfile.id ?? viewingProfile.telegram?.telegramId;
+          if (identifier) {
+            const refRes = await apiFetch(`/api/admin/users/${identifier}/profile`);
+            if (refRes.ok) {
+              const refData = await refRes.json();
+              setViewingProfile(refData.profile);
+            }
+          }
         }
         fetchData();
       } else {
@@ -783,14 +795,6 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                             {u.telegram?.lastSeenAt ? new Date(u.telegram.lastSeenAt).toLocaleString() : '—'}
                           </td>
                           <td className="py-3 px-3 text-right">
-                            {u.source === 'vm-bot' ? (
-                              <span
-                                className="text-[11px] italic text-slate-500"
-                                title="Managed by the VM Python bot (read-only mirror). Actions unlock once VM-bot → internal-API identity sync is implemented."
-                              >
-                                Read-only (VM)
-                              </span>
-                            ) : (
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
                                 variant="ghost"
@@ -802,34 +806,44 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                                 <Eye className="h-3.5 w-3.5 mr-1 text-indigo-400" />
                                 Profile
                               </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleToggleRole(u)}
-                                className="h-8 px-2 text-xs"
-                                title={u.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
-                              >
-                                {u.role === 'admin' ? 'Make User' : 'Make Admin'}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleToggleStatus(u)}
-                                className="h-8 px-2 text-xs"
-                              >
-                                {u.status === 'active' ? 'Disable' : 'Enable'}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setUserToDelete(u)}
-                                className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-                                title="Delete User"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              {u.source === 'vm-bot' ? (
+                                <span
+                                  className="text-[11px] italic text-slate-500 ml-1 px-1"
+                                  title="Managed by the VM Python bot (read-only mirror)."
+                                >
+                                  (VM)
+                                </span>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handleToggleRole(u)}
+                                    className="h-8 px-2 text-xs"
+                                    title={u.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
+                                  >
+                                    {u.role === 'admin' ? 'Make User' : 'Make Admin'}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleToggleStatus(u)}
+                                    className="h-8 px-2 text-xs"
+                                  >
+                                    {u.status === 'active' ? 'Disable' : 'Enable'}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setUserToDelete(u)}
+                                    className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                                    title="Delete User"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
-                            )}
                           </td>
                         </tr>
                       ))}
@@ -1159,8 +1173,8 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
       <Dialog
         isOpen={!!viewingProfile}
         onClose={() => setViewingProfile(null)}
-        title={`User Profile #${viewingProfile?.id}`}
-        description="Comprehensive account metadata, Gemini API key status, and connected services."
+        title={viewingProfile?.id ? `User Profile #${viewingProfile.id}` : `User Profile (${viewingProfile?.name || 'Telegram User'})`}
+        description="Comprehensive account metadata, Gemini API key status, AI model settings, and connected services."
         maxWidth="lg"
       >
         {viewingProfile && (
@@ -1169,7 +1183,13 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-slate-950 border border-white/5">
               <div>
                 <span className="text-xs text-slate-400 block">Name</span>
-                <span className="font-bold text-white">{viewingProfile.name}</span>
+                <span className="font-bold text-white truncate block">{viewingProfile.name}</span>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 block">Telegram Username</span>
+                <span className="text-cyan-400 text-xs font-medium block truncate">
+                  {viewingProfile.telegram?.username ? `@${viewingProfile.telegram.username}` : 'None'}
+                </span>
               </div>
               <div>
                 <span className="text-xs text-slate-400 block">Role</span>
@@ -1187,18 +1207,49 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                 <span className="text-xs text-slate-400 block">Telegram ID</span>
                 <span className="font-mono text-indigo-300 text-xs">{viewingProfile.telegram?.telegramId || 'None'}</span>
               </div>
+              <div>
+                <span className="text-xs text-slate-400 block">Source</span>
+                <Badge variant="outline" className={`mt-1 text-[10px] uppercase font-mono ${viewingProfile.source === 'vm-bot' ? 'border-cyan-500/40 text-cyan-300' : ''}`}>
+                  {viewingProfile.source === 'vm-bot' ? 'VM Bot' : 'Backend'}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 block">Preferred Model</span>
+                <span className="text-xs text-slate-200 font-mono block truncate">
+                  {viewingProfile.preferredModel || 'Gemini 2.5 Flash'}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 block">Last Seen</span>
+                <span className="text-xs text-slate-400 block truncate">
+                  {viewingProfile.telegram?.lastSeenAt ? new Date(viewingProfile.telegram.lastSeenAt).toLocaleString() : 'Never'}
+                </span>
+              </div>
             </div>
 
             {/* Gemini API Key Status (Never secrets) */}
-            <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 flex items-center justify-between text-xs">
-              <div>
-                <span className="font-bold text-white block">Gemini AI Key Status</span>
-                <span className="text-slate-400">
-                  Status: <strong className={viewingProfile.geminiKeyStatus.configured ? 'text-emerald-400' : 'text-slate-400'}>{viewingProfile.geminiKeyStatus.status}</strong>
-                </span>
+            <div className="p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-indigo-400" />
+                  <span className="font-bold text-white">Gemini AI Configuration</span>
+                </div>
+                <div className="text-slate-400 text-xs">
+                  Key Status: <strong className={viewingProfile.geminiKeyStatus.configured ? 'text-emerald-400 font-medium' : 'text-amber-400 font-medium'}>
+                    {viewingProfile.geminiKeyStatus.configured ? 'User API Key Active' : 'Server Key / Unconfigured'}
+                  </strong>
+                  {viewingProfile.preferredModel && (
+                    <span className="ml-2 text-slate-500">• Model: <span className="text-indigo-300 font-mono">{viewingProfile.preferredModel}</span></span>
+                  )}
+                </div>
+                {viewingProfile.geminiKeyStatus.lastUsed && (
+                  <div className="text-[11px] text-slate-500">
+                    Last AI Activity: {new Date(viewingProfile.geminiKeyStatus.lastUsed).toLocaleString()}
+                  </div>
+                )}
               </div>
-              <Badge variant={viewingProfile.geminiKeyStatus.configured ? 'emerald' : 'secondary'}>
-                {viewingProfile.geminiKeyStatus.configured ? 'User Key Active' : 'Unset'}
+              <Badge variant={viewingProfile.geminiKeyStatus.configured ? 'emerald' : 'secondary'} className="self-start sm:self-center shrink-0">
+                {viewingProfile.geminiKeyStatus.configured ? 'Custom Key Active' : 'Default / Unset'}
               </Badge>
             </div>
 
@@ -1223,11 +1274,11 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                       </div>
                     </div>
 
-                    {c.connected && viewingProfile.id != null && (
+                    {c.connected && (viewingProfile.id != null || viewingProfile.telegram?.telegramId != null) && (
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleRevokeConnector(viewingProfile.id!, c.name)}
+                        onClick={() => handleRevokeConnector(viewingProfile.id ?? viewingProfile.telegram!.telegramId, c.name)}
                         className="h-7 px-2.5 text-[11px]"
                       >
                         Revoke

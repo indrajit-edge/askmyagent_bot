@@ -26,6 +26,10 @@ export interface FormattedUser {
 }
 
 export interface UserProfileDetails extends FormattedUser {
+  source?: 'backend' | 'vm-bot';
+  preferredModel?: string | null;
+  hasGeminiKey?: boolean;
+  hasCalendarConfig?: boolean;
   geminiKeyStatus: {
     configured: boolean;
     status: 'Configured' | 'Not configured';
@@ -247,15 +251,108 @@ export class UserService {
 
   /**
    * Retrieves full user profile details including per-connector status (without exposing secrets).
+   * Supports querying by backend user ID or Telegram numeric ID.
    */
-  static async getUserProfile(userId: number): Promise<UserProfileDetails | null> {
-    const user = await this.getUserById(userId);
+  static async getUserProfile(identifier: number | string): Promise<UserProfileDetails | null> {
+    const rawId = String(identifier ?? '').trim();
+    if (!rawId) return null;
+
+    let user: FormattedUser | null = null;
+    let preferredModel: string | null = null;
+    let hasGeminiKeyFlag = false;
+    let hasCalendarConfigFlag = false;
+    let userSource: 'backend' | 'vm-bot' = 'backend';
+
+    const numId = Number(rawId);
+
+    // 1. Try finding by primary key in users table (if safe integer)
+    if (Number.isSafeInteger(numId) && numId > 0 && numId < 2147483647) {
+      user = await this.getUserById(numId);
+    }
+
+    // 2. If not found by users.id, try finding by telegram_id / chat_id in telegram_users
+    if (!user && Number.isSafeInteger(numId)) {
+      const tgRow = await db('telegram_users')
+        .where('telegram_id', numId)
+        .orWhere('chat_id', numId)
+        .first();
+
+      if (tgRow) {
+        if (tgRow.user_id) {
+          user = await this.getUserById(tgRow.user_id);
+        } else {
+          user = {
+            id: tgRow.id,
+            name: [tgRow.first_name, tgRow.last_name].filter(Boolean).join(' ') || (tgRow.username ? `@${tgRow.username}` : `Telegram User ${tgRow.telegram_id || tgRow.chat_id}`),
+            email: null,
+            role: 'user',
+            status: 'active',
+            createdAt: tgRow.created_at || new Date().toISOString(),
+            updatedAt: tgRow.updated_at || new Date().toISOString(),
+            telegram: {
+              telegramId: tgRow.telegram_id || tgRow.chat_id,
+              username: tgRow.username || null,
+              firstName: tgRow.first_name || null,
+              lastName: tgRow.last_name || null,
+              lastSeenAt: tgRow.last_seen_at
+            }
+          };
+        }
+      }
+    }
+
+    // 3. If still not found, check bot_users table
+    const tgChatId = user?.telegram?.telegramId ?? (Number.isSafeInteger(numId) ? numId : null);
+
+    if (tgChatId) {
+      try {
+        const hasBotUsersTable = await db.schema.hasTable('bot_users');
+        if (hasBotUsersTable) {
+          const botUser = await db('bot_users')
+            .where('chat_id', tgChatId)
+            .first();
+
+          if (botUser) {
+            preferredModel = botUser.preferred_model || null;
+            if (botUser.gemini_api_key && String(botUser.gemini_api_key).trim().length > 0) {
+              hasGeminiKeyFlag = true;
+            }
+            if (botUser.calendar_credentials_path || botUser.calendar_id) {
+              hasCalendarConfigFlag = true;
+            }
+
+            if (!user) {
+              userSource = 'vm-bot';
+              user = {
+                id: null as any,
+                name: [botUser.first_name, botUser.last_name].filter(Boolean).join(' ') || (botUser.username ? `@${botUser.username}` : `Telegram User ${botUser.chat_id}`),
+                email: null,
+                role: 'user',
+                status: 'active',
+                createdAt: botUser.created_at || null,
+                updatedAt: botUser.updated_at || null,
+                telegram: {
+                  telegramId: botUser.chat_id,
+                  username: botUser.username || null,
+                  firstName: botUser.first_name || null,
+                  lastName: botUser.last_name || null,
+                  lastSeenAt: botUser.last_seen_at || botUser.updated_at || botUser.created_at || null
+                }
+              };
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('[UserProfile] bot_users lookup failed:', err.message);
+      }
+    }
+
     if (!user) return null;
 
     const tgId = user.telegram?.telegramId;
 
-    // Check Gemini API key status without exposing the key
-    let geminiKeyConfigured = false;
+    // Check Gemini API key status across all sources (telegram_users + bot_users)
+    let geminiKeyConfigured = hasGeminiKeyFlag;
     let geminiLastUsed: string | null = null;
 
     if (tgId) {
@@ -268,9 +365,32 @@ export class UserService {
         geminiKeyConfigured = true;
       }
 
+      // Check bot_users table directly if not already configured
+      if (!geminiKeyConfigured) {
+        try {
+          const hasBotUsers = await db.schema.hasTable('bot_users');
+          if (hasBotUsers) {
+            const bUser = await db('bot_users').where('chat_id', tgId).first();
+            if (bUser && bUser.gemini_api_key && String(bUser.gemini_api_key).trim().length > 0) {
+              geminiKeyConfigured = true;
+              if (bUser.preferred_model && !preferredModel) {
+                preferredModel = bUser.preferred_model;
+              }
+            }
+          }
+        } catch {
+          // Ignore
+        }
+      }
+
+      // Check last Gemini activity log
       const lastGeminiLog = await db('api_logs')
         .where('chat_id', tgId)
-        .andWhere('connector', 'gemini')
+        .andWhere((builder) => {
+          builder.where('connector', 'gemini')
+            .orWhere('connector', 'bot')
+            .orWhereRaw('LOWER(operation) LIKE ?', ['%gemini%']);
+        })
         .orderBy('timestamp', 'desc')
         .first();
 
@@ -294,7 +414,7 @@ export class UserService {
         if (tgId) {
           const recentLogs = await db('api_logs')
             .where('chat_id', tgId)
-            .andWhere('connector', connector.name)
+            .andWhere('connector', connector.name.toLowerCase())
             .orderBy('timestamp', 'desc')
             .limit(5);
 
@@ -330,6 +450,10 @@ export class UserService {
 
     return {
       ...user,
+      source: (user as any).source || userSource,
+      preferredModel: preferredModel || (user as any).preferredModel || null,
+      hasGeminiKey: geminiKeyConfigured,
+      hasCalendarConfig: hasCalendarConfigFlag,
       geminiKeyStatus: {
         configured: geminiKeyConfigured,
         status: geminiKeyConfigured ? 'Configured' : 'Not configured',
