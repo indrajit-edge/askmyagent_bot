@@ -241,6 +241,16 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     fetchData(false);
   }, [statusFilter, roleFilter]);
 
+  // Auto-dismiss action notice banner after 4.5 seconds
+  useEffect(() => {
+    if (actionNotice) {
+      const timer = setTimeout(() => {
+        setActionNotice(null);
+      }, 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [actionNotice]);
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchData(false);
