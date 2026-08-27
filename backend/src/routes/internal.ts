@@ -54,6 +54,29 @@ router.post('/tool-call', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'tool_name is required.' });
     }
 
+    // Check if user is blocked / disabled
+    const tgUser = await db('telegram_users')
+      .where('telegram_id', Number(chat_id))
+      .orWhere('chat_id', Number(chat_id))
+      .first();
+
+    if (tgUser && (tgUser.is_blocked === 1 || tgUser.is_blocked === true)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Your account is disabled by administrator.'
+      });
+    }
+
+    if (tgUser && tgUser.user_id) {
+      const parentUser = await db('users').where('id', tgUser.user_id).first();
+      if (parentUser && parentUser.status === 'disabled') {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied. Your account is disabled by administrator.'
+        });
+      }
+    }
+
     await ensureTelegramIdentity(Number(chat_id), profile);
 
     const provider = tool_name.split('_')[0].toLowerCase();
@@ -101,6 +124,19 @@ router.post('/oauth/start', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'provider is required.' });
     }
 
+    // Check if user is blocked / disabled
+    const tgUser = await db('telegram_users')
+      .where('telegram_id', Number(chat_id))
+      .orWhere('chat_id', Number(chat_id))
+      .first();
+
+    if (tgUser && (tgUser.is_blocked === 1 || tgUser.is_blocked === true)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Your account is disabled by administrator.'
+      });
+    }
+
     const connector = GoogleConnectorRegistry.getInstance().getConnector(provider);
     if (!connector) {
       return res.status(404).json({ success: false, error: `Unknown provider "${provider}".` });
@@ -113,6 +149,59 @@ router.post('/oauth/start', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[InternalAPI] oauth/start failed:', err.message);
     return res.status(503).json({ success: false, error: err.message || 'OAuth is not configured.' });
+  }
+});
+
+/**
+ * GET /api/internal/user-status?chat_id=123
+ * Allows the VM bot to verify if a user exists and is active.
+ * Returns { exists: boolean, active: boolean, blocked: boolean }
+ */
+router.get('/user-status', async (req: Request, res: Response) => {
+  try {
+    const chatId = normalizeChatId(req.query.chat_id);
+    if (chatId === null) {
+      return res.status(400).json({ success: false, error: 'chat_id query parameter is required.' });
+    }
+
+    const numChatId = Number(chatId);
+
+    // Check telegram_users
+    const tgUser = await db('telegram_users')
+      .where('telegram_id', numChatId)
+      .orWhere('chat_id', numChatId)
+      .first();
+
+    // Check bot_users
+    let hasBotUser = false;
+    try {
+      const hasBotTable = await db.schema.hasTable('bot_users');
+      if (hasBotTable) {
+        const bRow = await db('bot_users').where('chat_id', numChatId).first();
+        if (bRow) hasBotUser = true;
+      }
+    } catch {}
+
+    if (!tgUser && !hasBotUser) {
+      return res.json({ success: true, exists: false, active: false, blocked: false });
+    }
+
+    let isBlocked = tgUser?.is_blocked === 1 || tgUser?.is_blocked === true;
+    if (tgUser?.user_id) {
+      const pUser = await db('users').where('id', tgUser.user_id).first();
+      if (pUser && pUser.status === 'disabled') {
+        isBlocked = true;
+      }
+    }
+
+    return res.json({
+      success: true,
+      exists: true,
+      active: !isBlocked,
+      blocked: isBlocked
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: 'Failed to query user status.' });
   }
 });
 

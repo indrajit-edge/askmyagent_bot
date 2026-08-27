@@ -149,15 +149,15 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 // PATCH /api/users/:id — Update user details (name, role, status)
 router.patch('/:id', async (req: AuthenticatedRequest, res: Response) => {
-  const userId = parseInt(req.params.id, 10);
-  if (isNaN(userId)) {
-    return res.status(400).json({ error: 'Valid numeric user ID is required' });
+  const paramId = req.params.id;
+  if (!paramId) {
+    return res.status(400).json({ error: 'User identifier is required' });
   }
 
   const { name, role, status } = req.body;
 
   try {
-    const updated = await UserService.updateUser(userId, { name, role, status });
+    const updated = await UserService.updateUser(paramId, { name, role, status });
     if (!updated) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -166,9 +166,9 @@ router.patch('/:id', async (req: AuthenticatedRequest, res: Response) => {
     await db('api_logs').insert({
       chat_id: updated.telegram?.telegramId || null,
       connector: 'admin_panel',
-      operation: `update_user_${userId}`,
+      operation: `update_user_${paramId}`,
       status: 'success',
-      error_message: `Admin ${req.admin?.username || 'system'} updated user #${userId}`
+      error_message: `Admin ${req.admin?.username || 'system'} updated user ${updated.name}`
     });
 
     res.json(updated);
@@ -179,9 +179,9 @@ router.patch('/:id', async (req: AuthenticatedRequest, res: Response) => {
 
 // PATCH /api/users/:id/status — Quick toggle/update status ('active' / 'disabled')
 router.patch('/:id/status', async (req: AuthenticatedRequest, res: Response) => {
-  const userId = parseInt(req.params.id, 10);
-  if (isNaN(userId)) {
-    return res.status(400).json({ error: 'Valid numeric user ID is required' });
+  const paramId = req.params.id;
+  if (!paramId) {
+    return res.status(400).json({ error: 'User identifier is required' });
   }
 
   const { status } = req.body;
@@ -190,7 +190,7 @@ router.patch('/:id/status', async (req: AuthenticatedRequest, res: Response) => 
   }
 
   try {
-    const success = await UserService.updateUserStatus(userId, status);
+    const success = await UserService.updateUserStatus(paramId, status);
     if (!success) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -199,12 +199,12 @@ router.patch('/:id/status', async (req: AuthenticatedRequest, res: Response) => 
     await db('api_logs').insert({
       chat_id: null,
       connector: 'admin_panel',
-      operation: `set_status_${status}_user_${userId}`,
+      operation: `set_status_${status}_user_${paramId}`,
       status: 'success',
-      error_message: `Admin ${req.admin?.username || 'system'} changed user #${userId} status to ${status}`
+      error_message: `Admin ${req.admin?.username || 'system'} changed user ${paramId} status to ${status}`
     });
 
-    res.json({ success: true, id: userId, status });
+    res.json({ success: true, id: paramId, status });
   } catch (err: any) {
     return logAndSendError(res, err, 'Failed to update user status');
   }
@@ -212,13 +212,13 @@ router.patch('/:id/status', async (req: AuthenticatedRequest, res: Response) => 
 
 // DELETE /api/users/:id — Delete user (with audit log)
 router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
-  const userId = parseInt(req.params.id, 10);
-  if (isNaN(userId)) {
-    return res.status(400).json({ error: 'Valid numeric user ID is required' });
+  const paramId = req.params.id;
+  if (!paramId) {
+    return res.status(400).json({ error: 'User identifier is required' });
   }
 
   try {
-    const success = await UserService.deleteUser(userId);
+    const success = await UserService.deleteUser(paramId);
     if (!success) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -227,12 +227,12 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
     await db('api_logs').insert({
       chat_id: null,
       connector: 'admin_panel',
-      operation: `delete_user_${userId}`,
+      operation: `delete_user_${paramId}`,
       status: 'success',
-      error_message: `Admin ${req.admin?.username || 'system'} deleted user #${userId}`
+      error_message: `Admin ${req.admin?.username || 'system'} deleted user ${paramId}`
     });
 
-    res.json({ success: true, message: `User #${userId} deleted successfully` });
+    res.json({ success: true, message: `User ${paramId} deleted successfully` });
   } catch (err: any) {
     return logAndSendError(res, err, 'Failed to delete user');
   }

@@ -465,10 +465,30 @@ export class UserService {
 
   /**
    * Updates user metadata with strict role protection (only 'user' and 'admin').
-   * Prevents removing or demoting the last active administrator.
+   * Supports identifier as numeric user ID or Telegram chat ID.
    */
-  static async updateUser(userId: number, updates: { name?: string; role?: string; status?: string }): Promise<FormattedUser | null> {
-    const existing = await this.getUserById(userId);
+  static async updateUser(identifier: number | string, updates: { name?: string; role?: string; status?: string }): Promise<FormattedUser | null> {
+    const rawId = String(identifier ?? '').trim();
+    if (!rawId) return null;
+
+    const profile = await this.getUserProfile(rawId);
+    if (!profile) return null;
+
+    let targetUserId = profile.id;
+
+    if (!targetUserId && profile.telegram?.telegramId) {
+      const synced = await this.upsertTelegramUser({
+        telegramId: profile.telegram.telegramId,
+        username: profile.telegram.username,
+        firstName: profile.telegram.firstName,
+        lastName: profile.telegram.lastName
+      });
+      targetUserId = synced.userId;
+    }
+
+    if (!targetUserId) return null;
+
+    const existing = await this.getUserById(targetUserId);
     if (!existing) return null;
 
     // Validate role if updated
@@ -477,7 +497,6 @@ export class UserService {
         throw new Error('Invalid role. Only "user" and "admin" roles are supported.');
       }
 
-      // Check if demoting an admin
       if (existing.role === 'admin' && updates.role === 'user') {
         const adminCount = await db('users').where({ role: 'admin', status: 'active' }).count('id as count').first();
         if (Number(adminCount?.count || 0) <= 1) {
@@ -502,60 +521,205 @@ export class UserService {
     if (updates.role !== undefined) payload.role = updates.role;
     if (updates.status !== undefined) payload.status = updates.status;
 
-    const count = await db('users').where({ id: userId }).update(payload);
-    if (!count) return null;
+    await db('users').where({ id: targetUserId }).update(payload);
 
-    return this.getUserById(userId);
+    if (updates.status !== undefined && profile.telegram?.telegramId) {
+      const isBlocked = updates.status === 'active' ? 0 : 1;
+      await db('telegram_users')
+        .where('telegram_id', profile.telegram.telegramId)
+        .orWhere('chat_id', profile.telegram.telegramId)
+        .update({ is_blocked: isBlocked, updated_at: db.fn.now() });
+    }
+
+    return this.getUserById(targetUserId);
   }
 
   /**
-   * Updates only user status with last-admin guard.
+   * Updates only user status with last-admin guard and updates telegram_users block status.
    */
-  static async updateUserStatus(userId: number, status: string): Promise<boolean> {
-    const existing = await this.getUserById(userId);
-    if (!existing) return false;
+  static async updateUserStatus(identifier: number | string, status: string): Promise<boolean> {
+    const rawId = String(identifier ?? '').trim();
+    if (!rawId) return false;
 
-    if (status !== 'active' && existing.role === 'admin') {
+    const profile = await this.getUserProfile(rawId);
+    if (!profile) return false;
+
+    if (profile.role === 'admin' && status !== 'active') {
       const activeAdminCount = await db('users').where({ role: 'admin', status: 'active' }).count('id as count').first();
       if (Number(activeAdminCount?.count || 0) <= 1) {
         throw new Error('Cannot disable the last active administrator account.');
       }
     }
 
-    const count = await db('users').where({ id: userId }).update({
-      status,
-      updated_at: db.fn.now()
-    });
-    return count > 0;
+    const isBlocked = status === 'active' ? 0 : 1;
+
+    if (profile.id) {
+      await db('users').where({ id: profile.id }).update({
+        status,
+        updated_at: db.fn.now()
+      });
+    }
+
+    if (profile.telegram?.telegramId) {
+      await db('telegram_users')
+        .where('telegram_id', profile.telegram.telegramId)
+        .orWhere('chat_id', profile.telegram.telegramId)
+        .update({
+          is_blocked: isBlocked,
+          updated_at: db.fn.now()
+        });
+    }
+
+    return true;
   }
 
   /**
-   * Deletes a user and cascades deletion to linked telegram records and connections.
+   * Deletes a user and cascades deletion to ALL tables:
+   * - bot_users (VM bot table: removes Gemini key, credentials, and state)
+   * - bot_usage (VM bot usage table)
+   * - google_connections (Workspace OAuth tokens & refresh tokens)
+   * - telegram_users (Telegram identity records)
+   * - users (Backend user accounts)
+   * - api_logs (User audit logs)
+   *
    * Protects the last active admin from deletion.
    */
-  static async deleteUser(userId: number): Promise<boolean> {
-    const existing = await this.getUserById(userId);
-    if (!existing) return false;
+  static async deleteUser(identifier: number | string): Promise<boolean> {
+    const rawId = String(identifier ?? '').trim();
+    if (!rawId) return false;
 
-    if (existing.role === 'admin') {
-      const adminCount = await db('users').where({ role: 'admin' }).count('id as count').first();
-      if (Number(adminCount?.count || 0) <= 1) {
-        throw new Error('Cannot delete the last administrator account.');
+    const numId = Number(rawId);
+
+    // 1. Gather all related user IDs and chat IDs
+    const userIds = new Set<number>();
+    const chatIds = new Set<number | string>();
+
+    // Check users table
+    if (Number.isSafeInteger(numId) && numId > 0 && numId < 2147483647) {
+      const userRow = await db('users').where({ id: numId }).first();
+      if (userRow) {
+        userIds.add(userRow.id);
+        if (userRow.role === 'admin') {
+          const adminCount = await db('users').where({ role: 'admin' }).count('id as count').first();
+          if (Number(adminCount?.count || 0) <= 1) {
+            throw new Error('Cannot delete the last administrator account.');
+          }
+        }
       }
     }
 
-    return await db.transaction(async (trx) => {
-      const tgRows = await trx('telegram_users').where({ user_id: userId });
-      const tgIds = tgRows.map((r) => r.telegram_id || r.chat_id).filter(Boolean);
+    // Check telegram_users table
+    let tgQuery = db('telegram_users');
+    if (userIds.size > 0) {
+      tgQuery = tgQuery.whereIn('user_id', Array.from(userIds));
+    }
+    if (Number.isSafeInteger(numId)) {
+      tgQuery = tgQuery.orWhere('telegram_id', numId).orWhere('chat_id', numId);
+    }
+    const tgRows = await tgQuery;
+    for (const row of tgRows) {
+      if (row.user_id) userIds.add(row.user_id);
+      if (row.telegram_id) chatIds.add(row.telegram_id);
+      if (row.chat_id) chatIds.add(row.chat_id);
+    }
 
-      if (tgIds.length > 0) {
-        await trx('google_connections').whereIn('chat_id', tgIds).delete();
+    // If identifier is numeric and looks like a chat_id
+    if (Number.isSafeInteger(numId)) {
+      chatIds.add(numId);
+    }
+
+    // Check bot_users table
+    try {
+      const hasBotUsers = await db.schema.hasTable('bot_users');
+      if (hasBotUsers) {
+        let bQuery = db('bot_users');
+        if (chatIds.size > 0) {
+          bQuery = bQuery.whereIn('chat_id', Array.from(chatIds));
+        }
+        if (Number.isSafeInteger(numId)) {
+          bQuery = bQuery.orWhere('chat_id', numId);
+        }
+        const botRows = await bQuery;
+        for (const brow of botRows) {
+          if (brow.chat_id) chatIds.add(brow.chat_id);
+        }
+      }
+    } catch {
+      // Ignore if bot_users table not accessible
+    }
+
+    // If nothing found across any table
+    if (userIds.size === 0 && chatIds.size === 0) {
+      return false;
+    }
+
+    const userIdsArray = Array.from(userIds);
+    const chatIdsArray = Array.from(chatIds);
+
+    // Double check admin protection on collected userIds
+    if (userIdsArray.length > 0) {
+      const adminUsers = await db('users').whereIn('id', userIdsArray).where({ role: 'admin' });
+      if (adminUsers.length > 0) {
+        const totalAdmins = await db('users').where({ role: 'admin' }).count('id as count').first();
+        if (Number(totalAdmins?.count || 0) <= adminUsers.length) {
+          throw new Error('Cannot delete the last administrator account.');
+        }
+      }
+    }
+
+    // 2. Cascade delete in a transaction across all database tables
+    return await db.transaction(async (trx) => {
+      // A. Delete from bot_users table
+      const hasBotUsersTable = await trx.schema.hasTable('bot_users');
+      if (hasBotUsersTable && chatIdsArray.length > 0) {
+        await trx('bot_users').whereIn('chat_id', chatIdsArray).delete();
+        for (const cid of chatIdsArray) {
+          await trx('bot_users').whereRaw('CAST(chat_id AS TEXT) = ?', [String(cid)]).delete();
+        }
       }
 
-      await trx('telegram_users').where({ user_id: userId }).delete();
-      const count = await trx('users').where({ id: userId }).delete();
+      // B. Delete from bot_usage table
+      const hasBotUsageTable = await trx.schema.hasTable('bot_usage');
+      if (hasBotUsageTable && chatIdsArray.length > 0) {
+        await trx('bot_usage').whereIn('chat_id', chatIdsArray).delete();
+        for (const cid of chatIdsArray) {
+          await trx('bot_usage').whereRaw('CAST(chat_id AS TEXT) = ?', [String(cid)]).delete();
+        }
+      }
 
-      return count > 0;
+      // C. Delete from google_connections table
+      if (chatIdsArray.length > 0) {
+        await trx('google_connections').whereIn('chat_id', chatIdsArray).delete();
+        for (const cid of chatIdsArray) {
+          await trx('google_connections').whereRaw('CAST(chat_id AS TEXT) = ?', [String(cid)]).delete();
+        }
+      }
+
+      // D. Delete from telegram_users table
+      if (userIdsArray.length > 0) {
+        await trx('telegram_users').whereIn('user_id', userIdsArray).delete();
+      }
+      if (chatIdsArray.length > 0) {
+        await trx('telegram_users').whereIn('telegram_id', chatIdsArray).orWhereIn('chat_id', chatIdsArray).delete();
+        for (const cid of chatIdsArray) {
+          await trx('telegram_users').whereRaw('CAST(COALESCE(telegram_id, chat_id) AS TEXT) = ?', [String(cid)]).delete();
+        }
+      }
+
+      // E. Delete from users table
+      if (userIdsArray.length > 0) {
+        await trx('users').whereIn('id', userIdsArray).delete();
+      }
+
+      // F. Delete from api_logs table
+      if (chatIdsArray.length > 0) {
+        await trx('api_logs').whereIn('chat_id', chatIdsArray).delete();
+        for (const cid of chatIdsArray) {
+          await trx('api_logs').whereRaw('CAST(chat_id AS TEXT) = ?', [String(cid)]).delete();
+        }
+      }
+
+      return true;
     });
   }
 }

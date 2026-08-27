@@ -296,8 +296,14 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     if (!editingUser) return;
     setActionNotice(null);
 
+    const identifier = editingUser.id ?? editingUser.telegram?.telegramId;
+    if (!identifier) {
+      setActionNotice({ type: 'error', text: 'User identifier not found.' });
+      return;
+    }
+
     try {
-      const res = await apiFetch(`/api/users/${editingUser.id}`, {
+      const res = await apiFetch(`/api/users/${identifier}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editFormData)
@@ -305,7 +311,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
       const data = await res.json();
 
       if (res.ok) {
-        setActionNotice({ type: 'success', text: `User #${editingUser.id} updated successfully.` });
+        setActionNotice({ type: 'success', text: `User "${editingUser.name}" updated successfully.` });
         setEditingUser(null);
         fetchData();
       } else {
@@ -318,9 +324,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
   // Quick Role Toggle (USER <-> ADMIN)
   const handleToggleRole = async (user: UserItem) => {
+    const identifier = user.id ?? user.telegram?.telegramId;
+    if (!identifier) return;
+
     const nextRole = user.role === 'admin' ? 'user' : 'admin';
     try {
-      const res = await apiFetch(`/api/users/${user.id}`, {
+      const res = await apiFetch(`/api/users/${identifier}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: nextRole })
@@ -339,9 +348,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
   // Toggle user status action
   const handleToggleStatus = async (user: UserItem) => {
+    const identifier = user.id ?? user.telegram?.telegramId;
+    if (!identifier) return;
+
     const nextStatus = user.status === 'active' ? 'disabled' : 'active';
     try {
-      const res = await apiFetch(`/api/users/${user.id}/status`, {
+      const res = await apiFetch(`/api/users/${identifier}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus })
@@ -361,12 +373,15 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   // Execute Delete
   const handleExecuteDelete = async () => {
     if (!userToDelete) return;
+    const identifier = userToDelete.id ?? userToDelete.telegram?.telegramId;
+    if (!identifier) return;
+
     try {
-      const res = await apiFetch(`/api/users/${userToDelete.id}`, {
+      const res = await apiFetch(`/api/users/${identifier}`, {
         method: 'DELETE'
       });
       if (res.ok) {
-        setActionNotice({ type: 'success', text: `User "${userToDelete.name}" was deleted.` });
+        setActionNotice({ type: 'success', text: `User "${userToDelete.name}" was deleted from all database tables.` });
         setUserToDelete(null);
         fetchData();
       } else {
@@ -806,43 +821,32 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                                 <Eye className="h-3.5 w-3.5 mr-1 text-indigo-400" />
                                 Profile
                               </Button>
-                              {u.source === 'vm-bot' ? (
-                                <span
-                                  className="text-[11px] italic text-slate-500 ml-1 px-1"
-                                  title="Managed by the VM Python bot (read-only mirror)."
-                                >
-                                  (VM)
-                                </span>
-                              ) : (
-                                <>
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => handleToggleRole(u)}
-                                    className="h-8 px-2 text-xs"
-                                    title={u.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
-                                  >
-                                    {u.role === 'admin' ? 'Make User' : 'Make Admin'}
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleToggleStatus(u)}
-                                    className="h-8 px-2 text-xs"
-                                  >
-                                    {u.status === 'active' ? 'Disable' : 'Enable'}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setUserToDelete(u)}
-                                    className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-                                    title="Delete User"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </>
-                              )}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleToggleRole(u)}
+                                className="h-8 px-2 text-xs"
+                                title={u.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
+                              >
+                                {u.role === 'admin' ? 'Make User' : 'Make Admin'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleStatus(u)}
+                                className="h-8 px-2 text-xs"
+                              >
+                                {u.status === 'active' ? 'Disable' : 'Enable'}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setUserToDelete(u)}
+                                className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                                title="Delete User from Database"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
                           </td>
                         </tr>
