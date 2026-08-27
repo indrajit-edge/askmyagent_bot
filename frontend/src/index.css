@@ -61,6 +61,38 @@
   code, pre {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  /* Global Input, Select, and Textarea Focus Resets (Prevents white browser border) */
+  input,
+  textarea,
+  select,
+  button {
+    outline: none;
+  }
+
+  input:focus,
+  input:focus-visible,
+  textarea:focus,
+  textarea:focus-visible,
+  select:focus,
+  select:focus-visible {
+    outline: none !important;
+    outline-offset: 0 !important;
+  }
+
+  /* WebKit Autofill Dark Mode Override (Prevents white background/border on browser autofill) */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #030712 inset !important;
+    -webkit-text-fill-color: #f8fafc !important;
+    border-color: rgba(99, 102, 241, 0.4) !important;
+    caret-color: #f8fafc !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
 }
 
 /* Glassmorphism Panels */
