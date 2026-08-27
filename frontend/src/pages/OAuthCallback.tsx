@@ -8,9 +8,11 @@ import { apiFetch } from '../lib/api';
 
 interface OAuthCallbackProps {
   onNavigateHome: () => void;
+  onNavigatePrivacy?: () => void;
+  onNavigateTerms?: () => void;
 }
 
-export default function OAuthCallback({ onNavigateHome }: OAuthCallbackProps) {
+export default function OAuthCallback({ onNavigateHome, onNavigatePrivacy, onNavigateTerms }: OAuthCallbackProps) {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [providerName, setProviderName] = useState('Google Workspace');
@@ -18,8 +20,8 @@ export default function OAuthCallback({ onNavigateHome }: OAuthCallbackProps) {
 
   // Plain https://t.me/ link (not tg://) so it works in browser tabs (e.g.
   // web.telegram.org) and auto-redirects into the native Telegram app if installed.
-  const telegramBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'your_bot_username').replace(/^@/, '');
-  const telegramBotUrl = `https://t.me/${telegramBotUsername}`;
+  const telegramBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'AskMyAgentBot').replace(/^@/, '');
+  const telegramBotUrl = import.meta.env.VITE_TELEGRAM_BOT_URL || `https://t.me/${telegramBotUsername}`;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -230,10 +232,21 @@ export default function OAuthCallback({ onNavigateHome }: OAuthCallbackProps) {
             </>
           )}
 
-          <CardFooter className="flex justify-center border-t border-white/5 py-3">
-            <span className="text-[11px] text-slate-500">
-              AskMyAgent Security • AES-256-GCM Authenticated Encryption
-            </span>
+          <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-white/5 py-3 text-[11px] text-slate-500">
+            <span>AskMyAgent Security • AES-256-GCM Encryption</span>
+            <div className="flex items-center gap-3">
+              {onNavigatePrivacy ? (
+                <button onClick={onNavigatePrivacy} className="hover:text-slate-300 transition-colors">Privacy Policy</button>
+              ) : (
+                <a href="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+              )}
+              <span>•</span>
+              {onNavigateTerms ? (
+                <button onClick={onNavigateTerms} className="hover:text-slate-300 transition-colors">Terms of Service</button>
+              ) : (
+                <a href="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</a>
+              )}
+            </div>
           </CardFooter>
         </Card>
       </motion.div>

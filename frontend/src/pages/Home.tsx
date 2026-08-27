@@ -15,6 +15,8 @@ import { apiFetch } from '../lib/api';
 interface HomeProps {
   onNavigateLogin: () => void;
   onNavigateAdmin: () => void;
+  onNavigatePrivacy?: () => void;
+  onNavigateTerms?: () => void;
   onSimulateOAuth: (provider: string) => void;
 }
 
@@ -27,8 +29,9 @@ const AVAILABLE_CONNECTORS = [
   { name: 'Google Tasks', icon: CheckSquare, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20', desc: 'Task lists, to-dos & reminders' },
 ];
 
-export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth }: HomeProps) {
-  const telegramBotUrl = import.meta.env.VITE_TELEGRAM_BOT_URL || 'https://t.me/your_bot_username';
+export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePrivacy, onNavigateTerms, onSimulateOAuth }: HomeProps) {
+  const telegramBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'AskMyAgentBot').replace(/^@/, '');
+  const telegramBotUrl = import.meta.env.VITE_TELEGRAM_BOT_URL || `https://t.me/${telegramBotUsername}`;
   const adminUsername = 'indrajit_edge';
   const adminProfileUrl = `https://t.me/${adminUsername}`;
   const [isAdminAllowed, setIsAdminAllowed] = useState(false);
@@ -706,16 +709,23 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-slate-400">
-            <button onClick={() => window.open(telegramBotUrl, '_blank')} className="hover:text-white transition-colors">Telegram</button>
+            <button onClick={() => window.open(telegramBotUrl, '_blank')} className="hover:text-white transition-colors">Telegram Bot</button>
             {isAdminAllowed && (
               <button onClick={onNavigateAdmin} className="text-indigo-300 hover:text-white transition-colors">Admin Portal</button>
             )}
             <button onClick={() => window.open(adminProfileUrl, '_blank')} className="hover:text-white transition-colors">Connect with Admin (@{adminUsername})</button>
             <span className="text-slate-600">·</span>
-            <span>Security</span>
-            <span>Privacy</span>
-            <span>Terms</span>
-            <span>Support</span>
+            {onNavigatePrivacy ? (
+              <button onClick={onNavigatePrivacy} className="hover:text-white transition-colors">Privacy Policy</button>
+            ) : (
+              <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+            )}
+            {onNavigateTerms ? (
+              <button onClick={onNavigateTerms} className="hover:text-white transition-colors">Terms of Service</button>
+            ) : (
+              <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+            )}
+            <button onClick={() => window.open(adminProfileUrl, '_blank')} className="hover:text-white transition-colors">Support</button>
           </div>
 
           <p className="text-slate-500 text-xs">© 2026 AskMyAgent. All rights reserved.</p>

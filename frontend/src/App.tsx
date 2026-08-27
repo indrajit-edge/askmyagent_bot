@@ -3,6 +3,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import OAuthCallback from './pages/OAuthCallback';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
@@ -32,11 +34,31 @@ export default function App() {
     navigate('/oauth/callback', `?code=${encodeURIComponent(mockCode)}&state=${encodeURIComponent(mockState)}`);
   };
 
+  if (path === '/privacy') {
+    return (
+      <PrivacyPolicy
+        onNavigateHome={() => navigate('/')}
+        onNavigateTerms={() => navigate('/terms')}
+      />
+    );
+  }
+
+  if (path === '/terms') {
+    return (
+      <TermsOfService
+        onNavigateHome={() => navigate('/')}
+        onNavigatePrivacy={() => navigate('/privacy')}
+      />
+    );
+  }
+
   if (path === '/login') {
     return (
       <Login
         onLoginSuccess={() => navigate('/admin')}
         onNavigateHome={() => navigate('/')}
+        onNavigatePrivacy={() => navigate('/privacy')}
+        onNavigateTerms={() => navigate('/terms')}
       />
     );
   }
@@ -54,6 +76,8 @@ export default function App() {
     return (
       <OAuthCallback
         onNavigateHome={() => navigate('/')}
+        onNavigatePrivacy={() => navigate('/privacy')}
+        onNavigateTerms={() => navigate('/terms')}
       />
     );
   }
@@ -63,6 +87,8 @@ export default function App() {
     <Home
       onNavigateLogin={() => navigate('/login')}
       onNavigateAdmin={() => navigate('/admin')}
+      onNavigatePrivacy={() => navigate('/privacy')}
+      onNavigateTerms={() => navigate('/terms')}
       onSimulateOAuth={simulateOAuth}
     />
   );

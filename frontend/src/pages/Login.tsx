@@ -10,9 +10,11 @@ import { apiFetch } from '../lib/api';
 interface LoginProps {
   onLoginSuccess: () => void;
   onNavigateHome: () => void;
+  onNavigatePrivacy?: () => void;
+  onNavigateTerms?: () => void;
 }
 
-export default function Login({ onLoginSuccess, onNavigateHome }: LoginProps) {
+export default function Login({ onLoginSuccess, onNavigateHome, onNavigatePrivacy, onNavigateTerms }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -146,6 +148,19 @@ export default function Login({ onLoginSuccess, onNavigateHome }: LoginProps) {
             <p className="text-[11px] text-slate-500">
               Authentication issues a secure HttpOnly signed JWT session token.
             </p>
+            <div className="flex items-center justify-center gap-3 text-[11px] text-slate-400">
+              {onNavigatePrivacy ? (
+                <button type="button" onClick={onNavigatePrivacy} className="hover:text-white transition-colors">Privacy Policy</button>
+              ) : (
+                <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+              )}
+              <span>•</span>
+              {onNavigateTerms ? (
+                <button type="button" onClick={onNavigateTerms} className="hover:text-white transition-colors">Terms of Service</button>
+              ) : (
+                <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+              )}
+            </div>
           </CardFooter>
         </Card>
       </motion.div>
