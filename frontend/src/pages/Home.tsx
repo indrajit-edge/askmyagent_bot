@@ -28,6 +28,8 @@ const AVAILABLE_CONNECTORS = [
 
 export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth }: HomeProps) {
   const telegramBotUrl = import.meta.env.VITE_TELEGRAM_BOT_URL || 'https://t.me/your_bot_username';
+  const adminUsername = 'indrajit_edge';
+  const adminProfileUrl = `https://t.me/${adminUsername}`;
 
   return (
     <div className="min-h-screen bg-[#050814] text-slate-100 relative overflow-hidden font-sans selection:bg-indigo-500 selection:text-white">
@@ -53,8 +55,14 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={onNavigateAdmin} className="hidden sm:inline-flex text-slate-300 hover:text-white">
-              Admin Portal
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => window.open(adminProfileUrl, '_blank')} 
+              className="hidden sm:inline-flex text-slate-300 hover:text-white gap-1.5"
+            >
+              <UserCheck className="h-3.5 w-3.5 text-indigo-400" />
+              Connect with Admin
             </Button>
             <Button 
               variant="glow" 
@@ -127,11 +135,11 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth
           <Button 
             variant="outline" 
             size="lg" 
-            onClick={onNavigateAdmin}
-            className="w-full sm:w-auto text-base"
+            onClick={() => window.open(adminProfileUrl, '_blank')}
+            className="w-full sm:w-auto text-base gap-2"
           >
-            <Lock className="h-4 w-4 mr-2 text-indigo-400" />
-            Admin Control Center
+            <UserCheck className="h-4 w-4 text-indigo-400" />
+            Connect with Admin (@{adminUsername})
           </Button>
         </motion.div>
 
@@ -659,7 +667,7 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-slate-400">
             <button onClick={() => window.open(telegramBotUrl, '_blank')} className="hover:text-white transition-colors">Telegram</button>
-            <button onClick={onNavigateAdmin} className="hover:text-white transition-colors">Admin Portal</button>
+            <button onClick={() => window.open(adminProfileUrl, '_blank')} className="hover:text-white transition-colors">Connect with Admin (@{adminUsername})</button>
             <span className="text-slate-600">·</span>
             <span>Security</span>
             <span>Privacy</span>
