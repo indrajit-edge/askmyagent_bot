@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, User, Key, ArrowLeft, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -17,6 +17,19 @@ export default function Login({ onLoginSuccess, onNavigateHome }: LoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    apiFetch('/api/admin/verify')
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            onLoginSuccess();
+          }
+        }
+      })
+      .catch(() => {});
+  }, [onLoginSuccess]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

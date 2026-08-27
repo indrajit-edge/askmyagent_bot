@@ -5,7 +5,7 @@ import {
   Trash2, LogOut, RefreshCw, Bot, ShieldCheck, ArrowLeft,
   CheckCircle2, XCircle, AlertCircle, Sparkles, Filter, ChevronRight,
   Shield, AlertTriangle, Clock, HardDrive, Lock, ShieldAlert,
-  Power, Check, Info, Server, Flame, Sliders
+  Power, Check, Info, Server, Flame, Sliders, Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -184,18 +184,20 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         apiFetch('/api/admin/emergency')
       ]);
 
-      if (usersRes.status === 401 || statsRes.status === 401) {
+      const responses = [usersRes, statsRes, connRes, secRes, healthRes, backupRes, logsRes, emergRes];
+
+      if (responses.some(r => r.status === 401)) {
         onLogout();
         return;
       }
 
-      if (usersRes.status === 403 || statsRes.status === 403) {
+      if (responses.some(r => r.status === 403)) {
         setError('Admin access is restricted to the authorized network.');
         setLoading(false);
         return;
       }
 
-      if (!usersRes.ok) {
+      if (!usersRes.ok || !statsRes.ok) {
         throw new Error(`Failed to load control center data (Status ${usersRes.status})`);
       }
 
@@ -412,6 +414,24 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               </Button>
             </div>
           </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && !stats) {
+    return (
+      <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none -z-10 animate-pulse-glow" />
+        <div className="absolute inset-0 bg-grid-pattern opacity-30 -z-10" />
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="h-14 w-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Loader2 className="h-7 w-7 text-indigo-400 animate-spin" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white">Loading Admin Control Center</h3>
+            <p className="text-xs text-slate-400 mt-1">Verifying session and loading telemetry...</p>
+          </div>
         </div>
       </div>
     );
