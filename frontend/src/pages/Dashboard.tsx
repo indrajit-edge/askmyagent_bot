@@ -1165,7 +1165,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 rounded-xl bg-slate-950 border border-white/5 flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-slate-950 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="font-bold text-white text-sm">Pause New Google OAuth Connections</h4>
                   <p className="text-xs text-slate-400 mt-0.5">Temporarily prevents users from starting new OAuth authorization handshakes.</p>
@@ -1174,12 +1174,13 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                   variant={emergencyState.pauseNewOAuth ? 'destructive' : 'outline'}
                   size="sm"
                   onClick={() => handleUpdateEmergency('pauseNewOAuth', !emergencyState.pauseNewOAuth)}
+                  className="self-start sm:self-auto shrink-0"
                 >
                   {emergencyState.pauseNewOAuth ? 'Resume OAuth' : 'Pause OAuth'}
                 </Button>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-950 border border-white/5 flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-slate-950 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="font-bold text-white text-sm">Maintenance Mode</h4>
                   <p className="text-xs text-slate-400 mt-0.5">Flags system as undergoing maintenance for Telegram bot responses.</p>
@@ -1188,6 +1189,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                   variant={emergencyState.maintenanceMode ? 'destructive' : 'outline'}
                   size="sm"
                   onClick={() => handleUpdateEmergency('maintenanceMode', !emergencyState.maintenanceMode)}
+                  className="self-start sm:self-auto shrink-0"
                 >
                   {emergencyState.maintenanceMode ? 'Disable Maintenance' : 'Enable Maintenance'}
                 </Button>
