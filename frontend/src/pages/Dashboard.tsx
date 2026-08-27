@@ -484,30 +484,30 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={onNavigateHome}>
-            <img src="/logo.jpg" alt="AskMyAgent Logo" className="h-9 w-9 rounded-xl object-cover border border-indigo-500/30" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer" onClick={onNavigateHome}>
+            <img src="/logo.jpg" alt="AskMyAgent Logo" className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl object-cover border border-indigo-500/30" />
             <div>
-              <span className="font-bold text-white tracking-tight">AskMyAgent</span>
-              <span className="text-xs text-indigo-400 ml-2 font-mono">Admin Control Center</span>
+              <span className="font-bold text-sm sm:text-base text-white tracking-tight">AskMyAgent</span>
+              <span className="text-[11px] text-indigo-400 ml-1.5 font-mono hidden sm:inline">Admin Control Center</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => fetchData(false)} disabled={isRefreshing}>
-              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isRefreshing && "animate-spin text-indigo-400")} />
-              {isRefreshing ? 'Syncing...' : 'Refresh'}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button variant="outline" size="sm" onClick={() => fetchData(false)} disabled={isRefreshing} className="px-2.5 sm:px-3 text-xs">
+              <RefreshCw className={cn("h-3.5 w-3.5 sm:mr-1.5", isRefreshing && "animate-spin text-indigo-400")} />
+              <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
             </Button>
-            <Button variant="secondary" size="sm" onClick={handleLogout}>
-              <LogOut className="h-3.5 w-3.5 mr-1.5 text-rose-400" />
-              Sign Out
+            <Button variant="secondary" size="sm" onClick={handleLogout} className="px-2.5 sm:px-3 text-xs">
+              <LogOut className="h-3.5 w-3.5 sm:mr-1.5 text-rose-400" />
+              <span className="hidden sm:inline">Sign Out</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         {/* Banner Action Notice */}
         <AnimatePresence>
           {actionNotice && (
@@ -515,17 +515,17 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className={`flex items-center justify-between p-4 mb-6 rounded-xl border ${
+              className={`flex items-center justify-between p-3.5 sm:p-4 mb-6 rounded-xl border ${
                 actionNotice.type === 'success'
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                   : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
               }`}
             >
-              <div className="flex items-center gap-2 text-sm font-medium">
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-medium">
                 {actionNotice.type === 'success' ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
                 ) : (
-                  <AlertCircle className="h-4 w-4 text-rose-400" />
+                  <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
                 )}
                 <span>{actionNotice.text}</span>
               </div>
@@ -540,38 +540,40 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         </AnimatePresence>
 
         {/* Top Header & Section Navigation Tabs */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">Application Administration</h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Application Administration</h1>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
               Central control center for user management, connector health, audit logs, and security oversight.
             </p>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex flex-wrap items-center gap-1 p-1 rounded-xl bg-slate-900 border border-white/5 text-xs font-medium">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'users', label: `Users (${users.length})` },
-              { id: 'connectors', label: 'Connectors' },
-              { id: 'security', label: `Security (${securityEvents.length})` },
-              { id: 'audit', label: 'Audit Logs' },
-              { id: 'health', label: 'System Health' },
-              { id: 'backups', label: 'Backups' },
-              { id: 'emergency', label: 'Emergency' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id as any)}
-                className={`px-3 py-2 rounded-lg transition-all ${
-                  activeTab === t.id
-                    ? 'bg-indigo-600 text-white shadow-md font-semibold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          {/* Navigation Tabs (Smooth touch-scrollable on mobile) */}
+          <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-none pb-1 sm:pb-0">
+            <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-white/10 text-xs font-medium min-w-max">
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'users', label: `Users (${users.length})` },
+                { id: 'connectors', label: 'Connectors' },
+                { id: 'security', label: `Security (${securityEvents.length})` },
+                { id: 'audit', label: 'Audit Logs' },
+                { id: 'health', label: 'System Health' },
+                { id: 'backups', label: 'Backups' },
+                { id: 'emergency', label: 'Emergency' },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id as any)}
+                  className={`px-3 py-2 rounded-lg transition-all whitespace-nowrap ${
+                    activeTab === t.id
+                      ? 'bg-indigo-600 text-white shadow-md font-semibold'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -60,22 +60,22 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
       </div>
 
       {/* Top Navigation */}
-      <nav className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/70 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="AskMyAgent Logo" className="h-9 w-9 rounded-xl object-cover border border-indigo-500/30 shadow-md shadow-indigo-500/20" />
+      <nav className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <img src="/logo.jpg" alt="AskMyAgent Logo" className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl object-cover border border-indigo-500/30 shadow-md shadow-indigo-500/20" />
             <div>
-              <span className="font-bold text-lg text-white tracking-tight">AskMyAgent</span>
+              <span className="font-bold text-base sm:text-lg text-white tracking-tight">AskMyAgent</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isAdminAllowed ? (
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={onNavigateAdmin} 
-                className="hidden sm:inline-flex text-indigo-300 hover:text-white hover:bg-indigo-500/10 gap-1.5 border border-indigo-500/30"
+                className="hidden sm:inline-flex text-indigo-300 hover:text-white hover:bg-indigo-500/10 gap-1.5 border border-indigo-500/30 px-3 py-1.5 text-xs"
               >
                 <Lock className="h-3.5 w-3.5 text-indigo-400" />
                 Admin Portal
@@ -85,7 +85,7 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
                 variant="ghost" 
                 size="sm" 
                 onClick={() => window.open(adminProfileUrl, '_blank')} 
-                className="hidden sm:inline-flex text-slate-300 hover:text-white gap-1.5"
+                className="hidden sm:inline-flex text-slate-300 hover:text-white gap-1.5 px-3 py-1.5 text-xs"
               >
                 <UserCheck className="h-3.5 w-3.5 text-indigo-400" />
                 Connect with Admin
@@ -95,22 +95,22 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
               variant="glow" 
               size="sm" 
               onClick={() => window.open(telegramBotUrl, '_blank')}
-              className="gap-1.5"
+              className="gap-1.5 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold"
             >
               <Send className="h-3.5 w-3.5" />
-              Open on Telegram
+              <span>Open on Telegram</span>
             </Button>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-24 pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
+      <section className="relative pt-14 sm:pt-24 pb-14 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-semibold mb-6 backdrop-blur-md"
+          className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-semibold mb-6 backdrop-blur-md"
         >
           <Sparkles className="h-3.5 w-3.5 text-indigo-400 animate-spin" style={{ animationDuration: '6s' }} />
           <span>One AI Agent. Available Everywhere.</span>
@@ -120,7 +120,7 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] mb-4"
+          className="text-3xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.15] mb-4"
         >
           Your AI Agent. <br />
           <span className="text-gradient">Wherever You Work.</span>
@@ -130,7 +130,7 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mt-6"
+          className="text-base sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mt-4 sm:mt-6"
         >
           AskMyAgent brings your everyday tools and services together with one intelligent AI agent, available directly through Telegram.
         </motion.p>
@@ -139,7 +139,7 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.25 }}
-          className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto mt-2"
+          className="text-xs sm:text-base text-slate-400 max-w-xl mx-auto mt-2"
         >
           Connect the services you use, then simply tell your agent what you need.
         </motion.p>
@@ -148,13 +148,13 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
-          className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+          className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
         >
           <Button 
             variant="glow" 
             size="lg" 
             onClick={() => window.open(telegramBotUrl, '_blank')}
-            className="w-full sm:w-auto px-8 text-base shadow-indigo-500/25"
+            className="w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base shadow-indigo-500/25 py-3"
           >
             <Send className="h-4 w-4 mr-2" />
             Open AskMyAgent on Telegram
