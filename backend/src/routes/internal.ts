@@ -72,8 +72,9 @@ router.post('/tool-call', async (req: Request, res: Response) => {
   try {
     const { chat_id, tool_name, args, profile } = req.body || {};
 
-    if (!Number.isInteger(chat_id)) {
-      return res.status(400).json({ success: false, error: 'chat_id must be an integer Telegram chat id.' });
+    const normalizedChatId = normalizeChatId(chat_id);
+    if (normalizedChatId === null) {
+      return res.status(400).json({ success: false, error: 'chat_id must be a valid integer or numeric Telegram chat id.' });
     }
     if (!tool_name || typeof tool_name !== 'string') {
       return res.status(400).json({ success: false, error: 'tool_name is required.' });
@@ -81,8 +82,8 @@ router.post('/tool-call', async (req: Request, res: Response) => {
 
     // Check if user is blocked / disabled
     const tgUser = await db('telegram_users')
-      .where('telegram_id', Number(chat_id))
-      .orWhere('chat_id', Number(chat_id))
+      .where('telegram_id', normalizedChatId)
+      .orWhere('chat_id', normalizedChatId)
       .first();
 
     if (tgUser && (tgUser.is_blocked === 1 || tgUser.is_blocked === true)) {
@@ -102,10 +103,10 @@ router.post('/tool-call', async (req: Request, res: Response) => {
       }
     }
 
-    await ensureTelegramIdentity(Number(chat_id), profile);
+    await ensureTelegramIdentity(normalizedChatId, profile);
 
     const provider = tool_name.split('_')[0].toLowerCase();
-    const quota = await QuotaManager.checkQuota(Number(chat_id), provider);
+    const quota = await QuotaManager.checkQuota(normalizedChatId, provider);
     if (!quota.allowed) {
       return res.status(429).json({
         success: false,
@@ -115,7 +116,7 @@ router.post('/tool-call', async (req: Request, res: Response) => {
     }
 
     const result = await GeminiToolDispatcher.dispatch({
-      chatId: Number(chat_id),
+      chatId: normalizedChatId,
       toolName: tool_name,
       arguments: (args && typeof args === 'object' ? args : {})
     });
@@ -142,8 +143,9 @@ router.post('/oauth/start', async (req: Request, res: Response) => {
   try {
     const { chat_id, provider, profile } = req.body || {};
 
-    if (!Number.isInteger(chat_id)) {
-      return res.status(400).json({ success: false, error: 'chat_id must be an integer Telegram chat id.' });
+    const normalizedChatId = normalizeChatId(chat_id);
+    if (normalizedChatId === null) {
+      return res.status(400).json({ success: false, error: 'chat_id must be a valid integer or numeric Telegram chat id.' });
     }
     if (!provider || typeof provider !== 'string') {
       return res.status(400).json({ success: false, error: 'provider is required.' });
@@ -151,8 +153,8 @@ router.post('/oauth/start', async (req: Request, res: Response) => {
 
     // Check if user is blocked / disabled
     const tgUser = await db('telegram_users')
-      .where('telegram_id', Number(chat_id))
-      .orWhere('chat_id', Number(chat_id))
+      .where('telegram_id', normalizedChatId)
+      .orWhere('chat_id', normalizedChatId)
       .first();
 
     if (tgUser && (tgUser.is_blocked === 1 || tgUser.is_blocked === true)) {
@@ -167,9 +169,9 @@ router.post('/oauth/start', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: `Unknown provider "${provider}".` });
     }
 
-    await ensureTelegramIdentity(Number(chat_id), profile);
+    await ensureTelegramIdentity(normalizedChatId, profile);
 
-    const authUrl = connector.getAuthorizationUrl(Number(chat_id));
+    const authUrl = connector.getAuthorizationUrl(normalizedChatId);
     return res.json({ success: true, provider, auth_url: authUrl });
   } catch (err: any) {
     console.error('[InternalAPI] oauth/start failed:', err.message);
@@ -329,8 +331,9 @@ router.post('/confirmation/resolve', async (req: Request, res: Response) => {
   try {
     const { chat_id, action_id, decision } = req.body || {};
 
-    if (!Number.isInteger(chat_id) || !action_id || typeof action_id !== 'string') {
-      return res.status(400).json({ success: false, error: 'chat_id (integer) and action_id (string) are required.' });
+    const normalizedChatId = normalizeChatId(chat_id);
+    if (normalizedChatId === null || !action_id || typeof action_id !== 'string') {
+      return res.status(400).json({ success: false, error: 'chat_id (valid Telegram id) and action_id (string) are required.' });
     }
     if (decision !== 'confirm' && decision !== 'cancel') {
       return res.status(400).json({ success: false, error: 'decision must be "confirm" or "cancel".' });
@@ -338,8 +341,8 @@ router.post('/confirmation/resolve', async (req: Request, res: Response) => {
 
     const outcome =
       decision === 'confirm'
-        ? await ConfirmationManager.confirmAction(Number(chat_id), action_id)
-        : ConfirmationManager.cancelAction(Number(chat_id), action_id);
+        ? await ConfirmationManager.confirmAction(normalizedChatId, action_id)
+        : ConfirmationManager.cancelAction(normalizedChatId, action_id);
 
     return res.json({ ...outcome });
   } catch (err: any) {
