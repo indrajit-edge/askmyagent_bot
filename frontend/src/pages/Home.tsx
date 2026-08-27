@@ -63,11 +63,7 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
       <nav className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/70 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 p-0.5 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <div className="h-full w-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Bot className="h-5 w-5 text-indigo-400" />
-              </div>
-            </div>
+            <img src="/logo.jpg" alt="AskMyAgent Logo" className="h-9 w-9 rounded-xl object-cover border border-indigo-500/30 shadow-md shadow-indigo-500/20" />
             <div>
               <span className="font-bold text-lg text-white tracking-tight">AskMyAgent</span>
             </div>

@@ -77,8 +77,40 @@ router.get('/', async (req: Request, res: Response) => {
 
     if (!filtersActive) {
       const botUsers = await fetchVmBotUsers();
+      const botUserMap = new Map<string, any>(
+        botUsers.map((b) => [String(b.chat_id), b])
+      );
+
+      // Enrich backend rows with real bot_users first_name/last_name/username if backend has placeholder
+      const enrichedWithSource = withSource.map((u: any) => {
+        const cid = String(u.telegram?.telegramId ?? '');
+        const b = botUserMap.get(cid);
+        if (!b) return u;
+
+        const realFirstName = (u.telegram?.firstName && u.telegram.firstName !== 'Telegram') ? u.telegram.firstName : (b.first_name || null);
+        const realLastName = (u.telegram?.lastName && u.telegram.lastName !== 'User') ? u.telegram.lastName : (b.last_name || null);
+        const realUsername = (u.telegram?.username && !u.telegram.username.startsWith('user_')) ? u.telegram.username : (b.username ? b.username.replace(/^@/, '') : null);
+        
+        const realFullName = [realFirstName, realLastName].filter(Boolean).join(' ') || 
+          (realUsername ? `@${realUsername}` : (u.name && !u.name.startsWith('Telegram User') && u.name !== 'Telegram User' ? u.name : (cid ? `User #${cid}` : u.name)));
+
+        return {
+          ...u,
+          name: realFullName,
+          telegram: u.telegram ? {
+            ...u.telegram,
+            firstName: realFirstName,
+            lastName: realLastName,
+            username: realUsername
+          } : null,
+          preferredModel: u.preferredModel || b.preferred_model || null,
+          hasGeminiKey: u.hasGeminiKey || b.hasGeminiKey,
+          hasCalendarConfig: u.hasCalendarConfig || b.hasCalendarConfig
+        };
+      });
+
       const knownChatIds = new Set(
-        withSource.map((u) => String(u.telegram?.telegramId ?? ''))
+        enrichedWithSource.map((u) => String(u.telegram?.telegramId ?? ''))
       );
 
       const searchTerm = search?.trim().toLowerCase();
@@ -97,30 +129,36 @@ router.get('/', async (req: Request, res: Response) => {
             .toLowerCase();
           return haystack.includes(searchTerm);
         })
-        .map((b) => ({
-          id: null, // no backend primary key; VM-managed rows are read-only
-          name:
-            [b.first_name, b.last_name].filter(Boolean).join(' ') ||
-            (b.username ? `@${b.username}` : `Telegram User ${b.chat_id}`),
-          email: null,
-          role: 'user',
-          status: 'active',
-          createdAt: b.created_at || null,
-          updatedAt: b.updated_at || null,
-          telegram: {
-            telegramId: b.chat_id,
-            username: b.username || null,
-            firstName: b.first_name || null,
-            lastName: b.last_name || null,
-            lastSeenAt: b.last_seen_at || b.updated_at || b.created_at || null
-          },
-          preferredModel: b.preferred_model || null,
-          hasGeminiKey: b.hasGeminiKey,
-          hasCalendarConfig: b.hasCalendarConfig,
-          source: 'vm-bot' as const
-        }));
+        .map((b) => {
+          const cleanUsername = b.username ? b.username.replace(/^@/, '') : null;
+          const cleanFirstName = b.first_name && b.first_name !== 'Telegram' ? b.first_name : null;
+          const cleanLastName = b.last_name && b.last_name !== 'User' ? b.last_name : null;
+          const realName = [cleanFirstName, cleanLastName].filter(Boolean).join(' ') || 
+            (cleanUsername ? `@${cleanUsername}` : `User #${b.chat_id}`);
 
-      result = [...withSource, ...vmItems];
+          return {
+            id: null, // no backend primary key; VM-managed rows are read-only
+            name: realName,
+            email: null,
+            role: 'user',
+            status: 'active',
+            createdAt: b.created_at || null,
+            updatedAt: b.updated_at || null,
+            telegram: {
+              telegramId: b.chat_id,
+              username: cleanUsername,
+              firstName: cleanFirstName,
+              lastName: cleanLastName,
+              lastSeenAt: b.last_seen_at || b.updated_at || b.created_at || null
+            },
+            preferredModel: b.preferred_model || null,
+            hasGeminiKey: b.hasGeminiKey,
+            hasCalendarConfig: b.hasCalendarConfig,
+            source: 'vm-bot' as const
+          };
+        });
+
+      result = [...enrichedWithSource, ...vmItems];
     }
 
     res.json(result);

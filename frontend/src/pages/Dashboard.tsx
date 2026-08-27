@@ -13,6 +13,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Input } from '../components/ui/Input';
 import { Dialog } from '../components/ui/Dialog';
 import { apiFetch } from '../lib/api';
+import { cn } from '../lib/utils';
 
 interface Stats {
   totalUsers: number;
@@ -137,7 +138,8 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [backupStatus, setBackupStatus] = useState<BackupStatus | null>(null);
   const [logs, setLogs] = useState<ApiLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Active Navigation Tab
@@ -163,9 +165,13 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     maintenanceMode: false
   });
 
-  const fetchData = async () => {
+  const fetchData = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) {
+        setInitialLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       setError(null);
 
       const params = new URLSearchParams();
@@ -193,7 +199,8 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
       if (responses.some(r => r.status === 403)) {
         setError('Admin access is restricted to the authorized network.');
-        setLoading(false);
+        setInitialLoading(false);
+        setIsRefreshing(false);
         return;
       }
 
@@ -221,17 +228,22 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     } catch (err: any) {
       setError(err.message || 'Failed to connect to backend server');
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
+  }, []);
+
+  useEffect(() => {
+    fetchData(false);
   }, [statusFilter, roleFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchData();
+    fetchData(false);
   };
 
   const handleLogout = async () => {
@@ -436,7 +448,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               <Button variant="outline" size="sm" onClick={onNavigateHome}>
                 Return to Home
               </Button>
-              <Button variant="secondary" size="sm" onClick={fetchData}>
+              <Button variant="secondary" size="sm" onClick={() => fetchData(true)}>
                 Retry
               </Button>
             </div>
@@ -446,7 +458,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     );
   }
 
-  if (loading && !stats) {
+  if (initialLoading && !stats) {
     return (
       <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none -z-10 animate-pulse-glow" />
@@ -474,9 +486,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
       <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={onNavigateHome}>
-            <div className="h-9 w-9 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
-              <Bot className="h-5 w-5 text-indigo-400" />
-            </div>
+            <img src="/logo.jpg" alt="AskMyAgent Logo" className="h-9 w-9 rounded-xl object-cover border border-indigo-500/30" />
             <div>
               <span className="font-bold text-white tracking-tight">AskMyAgent</span>
               <span className="text-xs text-indigo-400 ml-2 font-mono">Admin Control Center</span>
@@ -484,9 +494,9 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={fetchData}>
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-              Refresh
+            <Button variant="outline" size="sm" onClick={() => fetchData(false)} disabled={isRefreshing}>
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isRefreshing && "animate-spin text-indigo-400")} />
+              {isRefreshing ? 'Syncing...' : 'Refresh'}
             </Button>
             <Button variant="secondary" size="sm" onClick={handleLogout}>
               <LogOut className="h-3.5 w-3.5 mr-1.5 text-rose-400" />
@@ -741,7 +751,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               </div>
 
               {/* Users Table */}
-              {loading ? (
+              {initialLoading && users.length === 0 ? (
                 <div className="py-20 text-center text-slate-400">
                   <RefreshCw className="h-8 w-8 animate-spin mx-auto text-indigo-400 mb-3" />
                   <p className="text-sm">Loading users...</p>

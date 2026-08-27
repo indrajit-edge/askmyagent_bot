@@ -25,11 +25,19 @@ export class UserKeyService {
         updated_at: new Date().toISOString()
       });
     } else {
+      let botUser: any = null;
+      try {
+        const hasBotTable = await db.schema.hasTable('bot_users');
+        if (hasBotTable) {
+          botUser = await db('bot_users').where('chat_id', chatId).first();
+        }
+      } catch {}
+
       await UserService.upsertTelegramUser({
         telegramId: chatId,
-        username: `user_${chatId}`,
-        firstName: 'Telegram',
-        lastName: 'User'
+        username: botUser?.username || null,
+        firstName: botUser?.first_name || null,
+        lastName: botUser?.last_name || null
       });
 
       await db('telegram_users')

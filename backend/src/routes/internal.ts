@@ -18,22 +18,47 @@ interface InternalProfile {
 }
 
 /**
- * Ensures a users + telegram_users row exists for the given chat_id without
- * clobbering existing profile data (unlike a blind upsert).
+ * Ensures a users + telegram_users row exists for the given chat_id,
+ * enriching it with real profile data from bot_users or incoming request profile.
  */
 async function ensureTelegramIdentity(chatId: number, profile?: InternalProfile): Promise<void> {
+  // Check bot_users table for actual Telegram profile details
+  let botUser: any = null;
+  try {
+    const hasBotTable = await db.schema.hasTable('bot_users');
+    if (hasBotTable) {
+      botUser = await db('bot_users').where('chat_id', chatId).first();
+    }
+  } catch {}
+
+  const username = profile?.username || botUser?.username || null;
+  const firstName = profile?.first_name || botUser?.first_name || null;
+  const lastName = profile?.last_name || botUser?.last_name || null;
+
   const existing = await db('telegram_users')
     .where('telegram_id', chatId)
     .orWhere('chat_id', chatId)
     .first();
 
-  if (existing) return;
+  if (existing) {
+    // If existing row has placeholder values or missing name/username, update it
+    const isPlaceholder = !existing.first_name || existing.first_name === 'Telegram' || !existing.username || existing.username.startsWith('user_');
+    if (isPlaceholder && (firstName || lastName || username)) {
+      await UserService.upsertTelegramUser({
+        telegramId: chatId,
+        username: username || (existing.username && !existing.username.startsWith('user_') ? existing.username : null),
+        firstName: firstName || (existing.first_name !== 'Telegram' ? existing.first_name : null),
+        lastName: lastName || (existing.last_name !== 'User' ? existing.last_name : null)
+      });
+    }
+    return;
+  }
 
   await UserService.upsertTelegramUser({
     telegramId: chatId,
-    username: profile?.username || `user_${chatId}`,
-    firstName: profile?.first_name || 'Telegram',
-    lastName: profile?.last_name || 'User'
+    username: username || null,
+    firstName: firstName || null,
+    lastName: lastName || null
   });
 }
 

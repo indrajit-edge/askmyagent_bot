@@ -61,7 +61,12 @@ export class UserService {
       throw new Error('Valid numeric telegramId is required for user synchronization.');
     }
 
-    const displayName = [firstName, lastName].filter(Boolean).join(' ') || (username ? `@${username}` : `Telegram User ${telegramId}`);
+    const cleanUsername = username && !username.startsWith('user_') ? username.replace(/^@/, '') : null;
+    const cleanFirstName = firstName && firstName !== 'Telegram' ? firstName : null;
+    const cleanLastName = lastName && lastName !== 'User' ? lastName : null;
+
+    const displayName = [cleanFirstName, cleanLastName].filter(Boolean).join(' ') || 
+      (cleanUsername ? `@${cleanUsername}` : `User #${telegramId}`);
 
     return await db.transaction(async (trx) => {
       const existingTgUser = await trx('telegram_users')
@@ -70,15 +75,21 @@ export class UserService {
         .first();
 
       if (existingTgUser) {
+        const updatedUsername = cleanUsername || (existingTgUser.username && !existingTgUser.username.startsWith('user_') ? existingTgUser.username : null);
+        const updatedFirstName = cleanFirstName || (existingTgUser.first_name !== 'Telegram' ? existingTgUser.first_name : null);
+        const updatedLastName = cleanLastName || (existingTgUser.last_name !== 'User' ? existingTgUser.last_name : null);
+        const updatedDisplayName = [updatedFirstName, updatedLastName].filter(Boolean).join(' ') || 
+          (updatedUsername ? `@${updatedUsername}` : `User #${telegramId}`);
+
         // Update telegram user metadata and last_seen_at
         await trx('telegram_users')
           .where('id', existingTgUser.id)
           .update({
             telegram_id: telegramId,
             chat_id: telegramId,
-            username: username || existingTgUser.username || null,
-            first_name: firstName || existingTgUser.first_name || null,
-            last_name: lastName || existingTgUser.last_name || null,
+            username: updatedUsername,
+            first_name: updatedFirstName,
+            last_name: updatedLastName,
             last_seen_at: trx.fn.now(),
             updated_at: trx.fn.now()
           });
@@ -86,11 +97,11 @@ export class UserService {
         const targetUserId = existingTgUser.user_id;
 
         if (targetUserId) {
-          // Also update user's display name if changed
+          // Also update user's display name
           await trx('users')
             .where('id', targetUserId)
             .update({
-              name: displayName,
+              name: updatedDisplayName,
               updated_at: trx.fn.now()
             });
         }
@@ -180,9 +191,16 @@ export class UserService {
 
     return rows.map((r) => {
       const tgId = r.telegram_id || r.chat_id;
+      const cleanUsername = r.telegram_username && !r.telegram_username.startsWith('user_') ? r.telegram_username.replace(/^@/, '') : null;
+      const cleanFirstName = r.first_name && r.first_name !== 'Telegram' ? r.first_name : null;
+      const cleanLastName = r.last_name && r.last_name !== 'User' ? r.last_name : null;
+
+      const realName = [cleanFirstName, cleanLastName].filter(Boolean).join(' ') || 
+        (cleanUsername ? `@${cleanUsername}` : (r.name && !r.name.startsWith('Telegram User') && r.name !== 'Telegram User' ? r.name : (tgId ? `User #${tgId}` : r.name)));
+
       return {
         id: r.id,
-        name: r.name,
+        name: realName,
         email: r.email || null,
         role: r.role === 'admin' ? 'admin' : 'user',
         status: r.status || 'active',
@@ -191,9 +209,9 @@ export class UserService {
         telegram: tgId
           ? {
               telegramId: tgId,
-              username: r.telegram_username || null,
-              firstName: r.first_name || null,
-              lastName: r.last_name || null,
+              username: cleanUsername,
+              firstName: cleanFirstName,
+              lastName: cleanLastName,
               lastSeenAt: r.last_seen_at
             }
           : null
@@ -228,10 +246,16 @@ export class UserService {
     if (!row) return null;
 
     const tgId = row.telegram_id || row.chat_id;
+    const cleanUsername = row.telegram_username && !row.telegram_username.startsWith('user_') ? row.telegram_username.replace(/^@/, '') : null;
+    const cleanFirstName = row.first_name && row.first_name !== 'Telegram' ? row.first_name : null;
+    const cleanLastName = row.last_name && row.last_name !== 'User' ? row.last_name : null;
+
+    const realName = [cleanFirstName, cleanLastName].filter(Boolean).join(' ') || 
+      (cleanUsername ? `@${cleanUsername}` : (row.name && !row.name.startsWith('Telegram User') && row.name !== 'Telegram User' ? row.name : (tgId ? `User #${tgId}` : row.name)));
 
     return {
       id: row.id,
-      name: row.name,
+      name: realName,
       email: row.email || null,
       role: row.role === 'admin' ? 'admin' : 'user',
       status: row.status || 'active',
@@ -240,9 +264,9 @@ export class UserService {
       telegram: tgId
         ? {
             telegramId: tgId,
-            username: row.telegram_username || null,
-            firstName: row.first_name || null,
-            lastName: row.last_name || null,
+            username: cleanUsername,
+            firstName: cleanFirstName,
+            lastName: cleanLastName,
             lastSeenAt: row.last_seen_at
           }
         : null
@@ -323,9 +347,12 @@ export class UserService {
 
             if (!user) {
               userSource = 'vm-bot';
+              const cleanUsername = botUser.username ? botUser.username.replace(/^@/, '') : null;
+              const realName = [botUser.first_name, botUser.last_name].filter(Boolean).join(' ') || (cleanUsername ? `@${cleanUsername}` : `User #${botUser.chat_id}`);
+
               user = {
                 id: null as any,
-                name: [botUser.first_name, botUser.last_name].filter(Boolean).join(' ') || (botUser.username ? `@${botUser.username}` : `Telegram User ${botUser.chat_id}`),
+                name: realName,
                 email: null,
                 role: 'user',
                 status: 'active',
@@ -333,12 +360,26 @@ export class UserService {
                 updatedAt: botUser.updated_at || null,
                 telegram: {
                   telegramId: botUser.chat_id,
-                  username: botUser.username || null,
+                  username: cleanUsername,
                   firstName: botUser.first_name || null,
                   lastName: botUser.last_name || null,
                   lastSeenAt: botUser.last_seen_at || botUser.updated_at || botUser.created_at || null
                 }
               };
+            } else {
+              // User was found in backend, but enrich placeholder names with real bot_users info
+              const realFirstName = (user.telegram?.firstName && user.telegram.firstName !== 'Telegram') ? user.telegram.firstName : (botUser.first_name || null);
+              const realLastName = (user.telegram?.lastName && user.telegram.lastName !== 'User') ? user.telegram.lastName : (botUser.last_name || null);
+              const realUsername = (user.telegram?.username && !user.telegram.username.startsWith('user_')) ? user.telegram.username : (botUser.username ? botUser.username.replace(/^@/, '') : null);
+
+              const realFullName = [realFirstName, realLastName].filter(Boolean).join(' ') || (realUsername ? `@${realUsername}` : (user.name && !user.name.startsWith('Telegram User') ? user.name : `User #${tgChatId}`));
+
+              user.name = realFullName;
+              if (user.telegram) {
+                user.telegram.firstName = realFirstName;
+                user.telegram.lastName = realLastName;
+                user.telegram.username = realUsername;
+              }
             }
           }
         }
