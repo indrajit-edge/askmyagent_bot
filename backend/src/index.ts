@@ -103,6 +103,14 @@ app.get('/health', healthHandler);
 
 let server: any;
 
+/**
+ * Exposes the live HTTP server handle (set by startServer/auto-start) so
+ * embedders and test harnesses can shut it down gracefully.
+ */
+export function getHttpServer(): any {
+  return server;
+}
+
 export async function startServer(): Promise<any> {
   await runStartupMigrations();
 

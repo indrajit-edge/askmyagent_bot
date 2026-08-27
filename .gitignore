@@ -45,3 +45,13 @@ yarn-error.log*
 # Operating System Files
 .DS_Store
 Thumbs.db
+
+# Tests & Test Artifacts
+tests/
+test/
+__tests__/
+*.test.*
+*.spec.*
+repro*.*
+coverage/
+.nyc_output/

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import db from '../database/connection';
 import { GeminiToolDispatcher } from '../services/toolDispatcher';
 import { GoogleConnectorRegistry } from '../connectors/registry';
-import { GoogleTokenStore } from '../oauth/tokenStore';
+import { GoogleTokenStore, normalizeChatId } from '../oauth/tokenStore';
 import { UserService } from '../services/userService';
 import { ConfirmationManager } from '../confirmation';
 import { QuotaManager } from '../quota/quotaManager';
@@ -117,37 +117,80 @@ router.post('/oauth/start', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/internal/oauth/status?chat_id=123&provider=calendar
- * Provider is optional; omitted means "all providers".
- * Used by the VM bot to tell whether a user must run /connect<service> first.
+ * GET /api/internal/oauth/status?chat_id=123[&provider=calendar]
+ *
+ * Connection-status contract consumed by the VM bot's /connectors command.
+ * chat_id accepts a number or numeric string and is normalized BigInt-safely.
+ *
+ * Exact response shapes (STABLE — do not change without coordinating with the
+ * VM bot, which parses `status.get("providers", status)`):
+ *
+ * 1. All providers (no `provider` query param):
+ *    {
+ *      "success": true,
+ *      "chat_id": "7319408446",
+ *      "providers": {
+ *        "gmail":    { "connected": false, "email": null },
+ *        "calendar": { "connected": true,  "email": "user@gmail.com" }
+ *      },
+ *      "connections": [
+ *        { "provider": "gmail",    "connected": false, "email": null },
+ *        { "provider": "calendar", "connected": true,  "email": "user@gmail.com" }
+ *      ]
+ *    }
+ *    - `providers`: object KEYED by lowercase provider name (primary shape).
+ *    - `connections`: same data as an array (legacy/compat shape).
+ *    - `chat_id` is echoed as a STRING: Postgres bigint is not JSON-safe as a
+ *      JS number beyond 2^53, so consumers must treat it as an opaque id.
+ *
+ * 2. Single provider (`?chat_id=123&provider=calendar`) stays flat:
+ *    { "success": true, "provider": "calendar", "connected": true,
+ *      "email": "user@gmail.com" }
  */
 router.get('/oauth/status', async (req: Request, res: Response) => {
   try {
-    const chatId = Number(req.query.chat_id);
-    if (!Number.isInteger(chatId)) {
-      return res.status(400).json({ success: false, error: 'chat_id query parameter must be an integer.' });
+    const chatId = normalizeChatId(req.query.chat_id);
+    if (chatId === null) {
+      return res.status(400).json({ success: false, error: 'chat_id query parameter must be an integer Telegram chat id.' });
     }
 
-    const provider = req.query.provider ? String(req.query.provider).toLowerCase() : null;
+    const providerParam = req.query.provider ? String(req.query.provider).toLowerCase() : null;
 
-    if (provider) {
-      const connected = await GoogleTokenStore.isConnected(chatId, provider);
+    if (providerParam) {
+      const connected = await GoogleTokenStore.isConnected(chatId, providerParam);
       let email: string | null = null;
       if (connected) {
-        const creds = await GoogleTokenStore.getCredentials(chatId, provider);
+        const creds = await GoogleTokenStore.getCredentials(chatId, providerParam);
         email = creds?.email ?? null;
       }
-      return res.json({ success: true, provider, connected, email });
+      return res.json({ success: true, provider: providerParam, connected, email });
     }
 
     const registry = GoogleConnectorRegistry.getInstance();
     const connections = await Promise.all(
-      registry.getAllConnectors().map(async (connector) => ({
-        provider: connector.name,
-        connected: await GoogleTokenStore.isConnected(chatId, connector.name)
-      }))
+      registry.getAllConnectors().map(async (connector) => {
+        const connected = await GoogleTokenStore.isConnected(chatId, connector.name);
+        let email: string | null = null;
+        if (connected) {
+          const creds = await GoogleTokenStore.getCredentials(chatId, connector.name);
+          email = creds?.email ?? null;
+        }
+        return { provider: connector.name.toLowerCase(), connected, email };
+      })
     );
-    return res.json({ success: true, connections });
+
+    // Primary shape: providers map keyed by lowercase name (bot.py reads this).
+    // Legacy shape: connections array kept so existing consumers don't break.
+    const providers: Record<string, { connected: boolean; email: string | null }> = {};
+    for (const c of connections) {
+      providers[c.provider] = { connected: c.connected, email: c.email };
+    }
+    return res.json({
+      success: true,
+      chat_id: String(chatId),
+      providers,
+      connections
+    });
   } catch (err: any) {
     console.error('[InternalAPI] oauth/status failed:', err.message);
     return res.status(500).json({ success: false, error: 'Failed to read connection status.' });

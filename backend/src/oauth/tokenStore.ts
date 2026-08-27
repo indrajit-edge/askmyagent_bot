@@ -12,12 +12,28 @@ export interface StoredCredentials {
   scopes: string[];
 }
 
+/**
+ * Normalizes an inbound chat_id (number, numeric string, or a BIGINT read
+ * back from Postgres — node-pg returns bigint columns as strings) into a JS
+ * safe integer. Both the OAuth write path and every status/read path funnel
+ * through this so a string '7319408446' and the number 7319408446 can never
+ * diverge into separate rows or failed lookups.
+ *
+ * Values beyond Number.MAX_SAFE_INTEGER are rejected: they cannot round-trip
+ * through JSON without corruption and no current Telegram id needs them.
+ */
+export function normalizeChatId(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : Number(String(value ?? '').trim());
+  if (!Number.isSafeInteger(n)) return null;
+  return n;
+}
+
 export class GoogleTokenStore {
   /**
    * Save or update encrypted Google OAuth credentials for a given user and provider.
    */
   static async storeCredentials(
-    chatId: number,
+    chatId: number | string,
     provider: string,
     email: string,
     refreshToken: string,
@@ -25,6 +41,11 @@ export class GoogleTokenStore {
     tokenExpiry: Date,
     scopes: string[]
   ): Promise<void> {
+    const id = normalizeChatId(chatId);
+    if (id === null) {
+      throw new Error(`Cannot store credentials: invalid chat_id ${JSON.stringify(chatId)}.`);
+    }
+    chatId = id;
     const prov = provider.toLowerCase();
 
     // Ensure telegram user exists
@@ -73,9 +94,11 @@ export class GoogleTokenStore {
   /**
    * Retrieve and decrypt credentials for a given user and provider.
    */
-  static async getCredentials(chatId: number, provider: string): Promise<StoredCredentials | null> {
+  static async getCredentials(chatId: number | string, provider: string): Promise<StoredCredentials | null> {
+    const id = normalizeChatId(chatId);
+    if (id === null) return null;
     const row = await db('google_connections')
-      .where({ chat_id: chatId, provider: provider.toLowerCase() })
+      .where({ chat_id: id, provider: provider.toLowerCase() })
       .first();
 
     if (!row) {
@@ -88,7 +111,7 @@ export class GoogleTokenStore {
       const scopes = row.scopes ? row.scopes.split(' ') : [];
 
       return {
-        chatId: row.chat_id,
+        chatId: normalizeChatId(row.chat_id) ?? id,
         provider: row.provider,
         email: row.email,
         refreshToken,
@@ -105,7 +128,7 @@ export class GoogleTokenStore {
   /**
    * Retrieves a valid access token, automatically refreshing it with Google OAuth endpoint if expired.
    */
-  static async getValidAccessToken(chatId: number, provider: string): Promise<string | null> {
+  static async getValidAccessToken(chatId: number | string, provider: string): Promise<string | null> {
     const creds = await this.getCredentials(chatId, provider);
     if (!creds) return null;
 
@@ -165,9 +188,11 @@ export class GoogleTokenStore {
   /**
    * Checks if user has an active connection for a given provider.
    */
-  static async isConnected(chatId: number, provider: string): Promise<boolean> {
+  static async isConnected(chatId: number | string, provider: string): Promise<boolean> {
+    const id = normalizeChatId(chatId);
+    if (id === null) return false;
     const row = await db('google_connections')
-      .where({ chat_id: chatId, provider: provider.toLowerCase() })
+      .where({ chat_id: id, provider: provider.toLowerCase() })
       .first();
     return !!row;
   }
@@ -175,14 +200,16 @@ export class GoogleTokenStore {
   /**
    * Disconnects a specific Google Workspace service.
    */
-  static async disconnectService(chatId: number, provider: string): Promise<boolean> {
+  static async disconnectService(chatId: number | string, provider: string): Promise<boolean> {
+    const id = normalizeChatId(chatId);
+    if (id === null) return false;
     const deletedCount = await db('google_connections')
-      .where({ chat_id: chatId, provider: provider.toLowerCase() })
+      .where({ chat_id: id, provider: provider.toLowerCase() })
       .delete();
 
     // Log the disconnection in api_logs
     await db('api_logs').insert({
-      chat_id: chatId,
+      chat_id: id,
       connector: provider.toLowerCase(),
       operation: 'disconnect',
       status: 'success'
@@ -194,9 +221,11 @@ export class GoogleTokenStore {
   /**
    * Returns all active connections for a given user.
    */
-  static async getUserConnections(chatId: number): Promise<{ provider: string; email: string; createdAt: string }[]> {
+  static async getUserConnections(chatId: number | string): Promise<{ provider: string; email: string; createdAt: string }[]> {
+    const id = normalizeChatId(chatId);
+    if (id === null) return [];
     const rows = await db('google_connections')
-      .where({ chat_id: chatId })
+      .where({ chat_id: id })
       .select('provider', 'email', 'created_at');
 
     return rows.map((r) => ({

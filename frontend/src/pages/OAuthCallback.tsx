@@ -16,7 +16,10 @@ export default function OAuthCallback({ onNavigateHome }: OAuthCallbackProps) {
   const [providerName, setProviderName] = useState('Google Workspace');
   const [authorizedEmail, setAuthorizedEmail] = useState('');
 
-  const telegramBotUrl = import.meta.env.VITE_TELEGRAM_BOT_URL || 'https://t.me/your_bot_username';
+  // Plain https://t.me/ link (not tg://) so it works in browser tabs (e.g.
+  // web.telegram.org) and auto-redirects into the native Telegram app if installed.
+  const telegramBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'your_bot_username').replace(/^@/, '');
+  const telegramBotUrl = `https://t.me/${telegramBotUsername}`;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -157,6 +160,9 @@ export default function OAuthCallback({ onNavigateHome }: OAuthCallbackProps) {
                 </p>
 
                 <div className="flex flex-col gap-2 pt-2">
+                  {/* Purely navigational: the OAuth token exchange completes
+                      server-side before this page renders, so nothing depends
+                      on the user clicking this link. */}
                   <a
                     href={telegramBotUrl}
                     target="_blank"
@@ -166,6 +172,11 @@ export default function OAuthCallback({ onNavigateHome }: OAuthCallbackProps) {
                     <Send className="h-4 w-4" />
                     Open AskMyAgent on Telegram
                   </a>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    If nothing happens, search for{' '}
+                    <code className="text-slate-300 select-all">@{telegramBotUsername}</code>{' '}
+                    in Telegram.
+                  </p>
                   <Button
                     variant="outline"
                     onClick={onNavigateHome}
