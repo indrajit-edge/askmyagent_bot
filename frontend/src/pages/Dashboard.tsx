@@ -352,6 +352,14 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     if (!identifier) return;
 
     const nextRole = user.role === 'admin' ? 'user' : 'admin';
+    // Optimistic UI update
+    setUsers(prev => prev.map(u => {
+      if ((user.id && u.id === user.id) || (user.telegram?.telegramId && u.telegram?.telegramId === user.telegram?.telegramId)) {
+        return { ...u, role: nextRole };
+      }
+      return u;
+    }));
+
     try {
       const res = await apiFetch(`/api/users/${identifier}`, {
         method: 'PATCH',
@@ -361,12 +369,14 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
       const data = await res.json();
       if (res.ok) {
         setActionNotice({ type: 'success', text: `User "${user.name}" role updated to ${nextRole.toUpperCase()}.` });
-        fetchData();
+        fetchData(false);
       } else {
         setActionNotice({ type: 'error', text: data.error || 'Failed to update role' });
+        fetchData(false);
       }
     } catch {
       setActionNotice({ type: 'error', text: 'Network error updating role.' });
+      fetchData(false);
     }
   };
 
@@ -376,6 +386,14 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     if (!identifier) return;
 
     const nextStatus = user.status === 'active' ? 'disabled' : 'active';
+    // Optimistic UI update
+    setUsers(prev => prev.map(u => {
+      if ((user.id && u.id === user.id) || (user.telegram?.telegramId && u.telegram?.telegramId === user.telegram?.telegramId)) {
+        return { ...u, status: nextStatus };
+      }
+      return u;
+    }));
+
     try {
       const res = await apiFetch(`/api/users/${identifier}/status`, {
         method: 'PATCH',
@@ -384,13 +402,15 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
       });
       if (res.ok) {
         setActionNotice({ type: 'success', text: `User "${user.name}" is now ${nextStatus}.` });
-        fetchData();
+        fetchData(false);
       } else {
         const data = await res.json();
         setActionNotice({ type: 'error', text: data.error || 'Failed to update status' });
+        fetchData(false);
       }
     } catch {
       setActionNotice({ type: 'error', text: 'Network error toggling status.' });
+      fetchData(false);
     }
   };
 
@@ -400,6 +420,15 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     const identifier = userToDelete.id ?? userToDelete.telegram?.telegramId;
     if (!identifier) return;
 
+    // Optimistic UI update: Remove user immediately from local list
+    const targetId = userToDelete.id;
+    const targetChatId = userToDelete.telegram?.telegramId;
+    setUsers(prev => prev.filter(u => {
+      if (targetId && u.id === targetId) return false;
+      if (targetChatId && u.telegram?.telegramId === targetChatId) return false;
+      return true;
+    }));
+
     try {
       const res = await apiFetch(`/api/users/${identifier}`, {
         method: 'DELETE'
@@ -407,13 +436,15 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
       if (res.ok) {
         setActionNotice({ type: 'success', text: `User "${userToDelete.name}" was deleted from all database tables.` });
         setUserToDelete(null);
-        fetchData();
+        fetchData(false);
       } else {
         const data = await res.json();
         setActionNotice({ type: 'error', text: data.error || 'Failed to delete user' });
+        fetchData(false);
       }
     } catch {
       setActionNotice({ type: 'error', text: 'Network error deleting user.' });
+      fetchData(false);
     }
   };
 
