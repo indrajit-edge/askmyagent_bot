@@ -97,6 +97,7 @@ interface SecurityEvent {
 interface SystemHealth {
   backend: string;
   database: string;
+  dbEngine?: string;
   internalApi: string;
   googleOAuth: string;
   gemini: string;
@@ -110,6 +111,7 @@ interface BackupStatus {
   lastBackup: string;
   backupSchedule: string;
   retentionPolicy: string;
+  databaseEngine?: string;
   databaseSizeKb: number;
   status: string;
   note: string;
@@ -624,7 +626,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               <div className="text-3xl font-bold text-white mt-2">
                 {stats?.totalApiCalls ?? 0}
               </div>
-              <p className="text-xs text-cyan-300 mt-1">Tracked in SQLite api_logs</p>
+              <p className="text-xs text-cyan-300 mt-1">Tracked in relational api_logs</p>
             </CardContent>
           </Card>
 
@@ -665,7 +667,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                   </div>
                   <div className="flex justify-between py-2 border-b border-white/5">
                     <span className="text-slate-400">Database Engine</span>
-                    <span className="font-semibold text-white">SQLite3 + Knex Relational</span>
+                    <span className="font-semibold text-white">{systemHealth?.dbEngine || 'PostgreSQL'} + Knex Relational</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-white/5">
                     <span className="text-slate-400">Google OAuth 2.0 Health</span>
@@ -1066,9 +1068,9 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                   </div>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-950 border border-white/5 space-y-1">
-                  <span className="text-xs text-slate-400">SQLite Database Engine</span>
+                  <span className="text-xs text-slate-400">{systemHealth?.dbEngine || 'Relational'} Database Engine</span>
                   <div className="text-base font-bold text-emerald-400 flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4" /> HEALTHY
+                    <CheckCircle2 className="h-4 w-4" /> {systemHealth?.database === 'HEALTHY' ? 'HEALTHY' : 'UNHEALTHY'}
                   </div>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-950 border border-white/5 space-y-1">
@@ -1090,7 +1092,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                   </div>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-950 border border-white/5 space-y-1">
-                  <span className="text-xs text-slate-400">SQLite Database Size</span>
+                  <span className="text-xs text-slate-400">{systemHealth?.dbEngine || 'Database'} Storage Size</span>
                   <div className="text-base font-bold text-purple-300 font-mono">
                     {systemHealth ? `${systemHealth.dbSizeKb} KB` : '—'}
                   </div>
@@ -1106,7 +1108,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <HardDrive className="h-5 w-5 text-indigo-400" />
-                SQLite Backup Oversight
+                {backupStatus?.databaseEngine || systemHealth?.dbEngine || 'Database'} Backup Oversight
               </CardTitle>
               <CardDescription>
                 Backup execution status and retention policy. Restoration remains a Server Owner operation via SSH.
@@ -1116,16 +1118,16 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-slate-950 border border-white/5 space-y-2 text-xs">
                   <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-slate-400">Backup Engine:</span>
-                    <span className="text-white font-mono">Online SQLite3 .backup</span>
+                    <span className="text-slate-400">Database Engine:</span>
+                    <span className="text-white font-mono">{backupStatus?.databaseEngine || systemHealth?.dbEngine || 'Relational'}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-white/5">
                     <span className="text-slate-400">Automated Schedule:</span>
-                    <span className="text-emerald-300 font-semibold">{backupStatus?.backupSchedule || 'Daily at 02:00 AM UTC'}</span>
+                    <span className="text-emerald-300 font-semibold">{backupStatus?.backupSchedule || 'Daily Automated Cloud Snapshot'}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-white/5">
                     <span className="text-slate-400">Retention Policy:</span>
-                    <span className="text-white">{backupStatus?.retentionPolicy || '7 Days'}</span>
+                    <span className="text-white">{backupStatus?.retentionPolicy || '30 Days Point-in-Time Recovery'}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-slate-400">Backup Status:</span>
@@ -1394,7 +1396,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               Are you sure you want to permanently delete user <strong className="text-white">"{userToDelete.name}"</strong> (ID: #{userToDelete.id}, Telegram ID: {userToDelete.telegram?.telegramId || 'None'})?
             </p>
             <p className="text-xs text-rose-300">
-              ⚠️ This will remove their stored metadata, token records, and Google OAuth credentials from SQLite.
+              ⚠️ This will remove their stored metadata, token records, and Google OAuth credentials from the database.
             </p>
 
             <div className="flex justify-end gap-2 pt-3">

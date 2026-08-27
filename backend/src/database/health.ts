@@ -17,11 +17,22 @@ export async function getDatabaseSizeKb(): Promise<number | null> {
     return Number.isFinite(bytes) ? Math.round(bytes / 1024) : null;
   }
 
-  const dbPath = path.join(__dirname, '../../database.sqlite');
+  const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../../database.sqlite');
   if (!fs.existsSync(dbPath)) {
     return null;
   }
 
   const stats = fs.statSync(dbPath);
   return Math.round(stats.size / 1024);
+}
+
+export function getDatabaseEngine(): string {
+  const dbUrl = process.env.DATABASE_URL;
+  if (dbUrl && (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://'))) {
+    return 'PostgreSQL';
+  }
+  const client = (db.client as any)?.config?.client;
+  if (client === 'pg' || client === 'postgresql') return 'PostgreSQL';
+  if (client === 'sqlite3') return 'SQLite3';
+  return 'PostgreSQL / Relational Database';
 }
