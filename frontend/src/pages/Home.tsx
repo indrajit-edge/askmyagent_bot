@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Bot, ShieldCheck, Zap, Sparkles, Mail, Calendar, HardDrive, 
@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Marquee } from '../components/ui/Marquee';
+import { apiFetch } from '../lib/api';
 
 interface HomeProps {
   onNavigateLogin: () => void;
@@ -30,6 +31,21 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth
   const telegramBotUrl = import.meta.env.VITE_TELEGRAM_BOT_URL || 'https://t.me/your_bot_username';
   const adminUsername = 'indrajit_edge';
   const adminProfileUrl = `https://t.me/${adminUsername}`;
+  const [isAdminAllowed, setIsAdminAllowed] = useState(false);
+
+  useEffect(() => {
+    apiFetch('/api/admin/access-check')
+      .then((res) => {
+        if (res.ok) {
+          setIsAdminAllowed(true);
+        } else {
+          setIsAdminAllowed(false);
+        }
+      })
+      .catch(() => {
+        setIsAdminAllowed(false);
+      });
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#050814] text-slate-100 relative overflow-hidden font-sans selection:bg-indigo-500 selection:text-white">
@@ -55,15 +71,27 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth
           </div>
 
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => window.open(adminProfileUrl, '_blank')} 
-              className="hidden sm:inline-flex text-slate-300 hover:text-white gap-1.5"
-            >
-              <UserCheck className="h-3.5 w-3.5 text-indigo-400" />
-              Connect with Admin
-            </Button>
+            {isAdminAllowed ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onNavigateAdmin} 
+                className="hidden sm:inline-flex text-indigo-300 hover:text-white hover:bg-indigo-500/10 gap-1.5 border border-indigo-500/30"
+              >
+                <Lock className="h-3.5 w-3.5 text-indigo-400" />
+                Admin Portal
+              </Button>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => window.open(adminProfileUrl, '_blank')} 
+                className="hidden sm:inline-flex text-slate-300 hover:text-white gap-1.5"
+              >
+                <UserCheck className="h-3.5 w-3.5 text-indigo-400" />
+                Connect with Admin
+              </Button>
+            )}
             <Button 
               variant="glow" 
               size="sm" 
@@ -132,15 +160,27 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth
             <Send className="h-4 w-4 mr-2" />
             Open AskMyAgent on Telegram
           </Button>
-          <Button 
-            variant="outline" 
-            size="lg" 
-            onClick={() => window.open(adminProfileUrl, '_blank')}
-            className="w-full sm:w-auto text-base gap-2"
-          >
-            <UserCheck className="h-4 w-4 text-indigo-400" />
-            Connect with Admin (@{adminUsername})
-          </Button>
+          {isAdminAllowed ? (
+            <Button 
+              variant="outline" 
+              size="lg" 
+              onClick={onNavigateAdmin}
+              className="w-full sm:w-auto text-base gap-2 border-indigo-500/40 hover:bg-indigo-500/10 text-white"
+            >
+              <Lock className="h-4 w-4 text-indigo-400" />
+              Admin Control Center
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="lg" 
+              onClick={() => window.open(adminProfileUrl, '_blank')}
+              className="w-full sm:w-auto text-base gap-2"
+            >
+              <UserCheck className="h-4 w-4 text-indigo-400" />
+              Connect with Admin (@{adminUsername})
+            </Button>
+          )}
         </motion.div>
 
         <motion.p
@@ -667,6 +707,9 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onSimulateOAuth
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-slate-400">
             <button onClick={() => window.open(telegramBotUrl, '_blank')} className="hover:text-white transition-colors">Telegram</button>
+            {isAdminAllowed && (
+              <button onClick={onNavigateAdmin} className="text-indigo-300 hover:text-white transition-colors">Admin Portal</button>
+            )}
             <button onClick={() => window.open(adminProfileUrl, '_blank')} className="hover:text-white transition-colors">Connect with Admin (@{adminUsername})</button>
             <span className="text-slate-600">·</span>
             <span>Security</span>

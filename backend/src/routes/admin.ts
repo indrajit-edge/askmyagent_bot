@@ -36,6 +36,11 @@ const emergencyState = {
 // Start time for uptime calculation
 const startTime = Date.now();
 
+// Check if client IP is permitted for admin access (protected by requireAdminNetworkAccess)
+router.get('/access-check', (req, res) => {
+  res.json({ success: true, allowed: true });
+});
+
 // Admin login (with rate limiting)
 router.post('/login', adminLoginLimiter, async (req, res) => {
   const { username, password } = req.body || {};
