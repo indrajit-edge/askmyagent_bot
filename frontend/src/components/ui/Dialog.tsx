@@ -13,6 +13,25 @@ export interface DialogProps {
 }
 
 export function Dialog({ isOpen, onClose, title, description, children, maxWidth = 'md' }: DialogProps) {
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   const maxW = {
     sm: 'max-w-sm',
     md: 'max-w-md',

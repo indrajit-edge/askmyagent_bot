@@ -7,11 +7,18 @@ export function apiUrl(path: string): string {
 }
 
 export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const signal = init.signal || controller.signal;
+
   return fetch(apiUrl(path), {
     credentials: 'include',
     ...init,
+    signal,
     headers: {
       ...(init.headers || {})
     }
+  }).finally(() => {
+    clearTimeout(timeoutId);
   });
 }
