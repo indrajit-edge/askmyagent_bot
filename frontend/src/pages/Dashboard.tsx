@@ -154,6 +154,9 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [securitySeverityFilter, setSecuritySeverityFilter] = useState('all');
+  const [auditSearchTerm, setAuditSearchTerm] = useState('');
+  const [auditStatusFilter, setAuditStatusFilter] = useState('all');
 
   // Modals & Interactive states
   const [viewingProfile, setViewingProfile] = useState<UserProfileDetails | null>(null);
@@ -519,6 +522,27 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
       </div>
     );
   }
+
+  const filteredSecurityEvents = securityEvents.filter((ev) => {
+    if (securitySeverityFilter === 'all') return true;
+    return ev.severity.toUpperCase() === securitySeverityFilter.toUpperCase();
+  });
+
+  const filteredLogs = logs.filter((l) => {
+    if (auditStatusFilter === 'success' && l.status !== 'success') return false;
+    if (auditStatusFilter === 'failed' && l.status === 'success') return false;
+    if (!auditSearchTerm.trim()) return true;
+    const term = auditSearchTerm.toLowerCase();
+    const haystack = [
+      String(l.id),
+      String(l.chat_id || ''),
+      l.connector,
+      l.operation,
+      l.status,
+      l.error_message || ''
+    ].join(' ').toLowerCase();
+    return haystack.includes(term);
+  });
 
   return (
     <div className="min-h-screen bg-[#050814] text-slate-100 flex flex-col relative overflow-hidden font-sans">
@@ -1045,18 +1069,46 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         {/* TAB 4: SECURITY CENTER */}
         {activeTab === 'security' && (
           <Card className="border-white/10 bg-slate-900/40">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-emerald-400" />
-                Security Center & Anomaly Log
-              </CardTitle>
-              <CardDescription>
-                Audited security events including admin logins, OAuth validations, and rate-limit violations. Zero secrets logged.
-              </CardDescription>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                  Security Center & Anomaly Log
+                </CardTitle>
+                <CardDescription>
+                  Audited security events including admin logins, OAuth validations, and rate-limit violations. Zero secrets logged.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <select
+                  className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  value={securitySeverityFilter}
+                  onChange={(e) => setSecuritySeverityFilter(e.target.value)}
+                >
+                  <option value="all">Severity: All</option>
+                  <option value="CRITICAL">Critical</option>
+                  <option value="ERROR">Error</option>
+                  <option value="WARNING">Warning</option>
+                  <option value="INFO">Info</option>
+                </select>
+                {securitySeverityFilter !== 'all' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSecuritySeverityFilter('all')}
+                    className="text-xs text-slate-400 hover:text-white px-2.5"
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              {securityEvents.length === 0 ? (
-                <p className="text-center py-12 text-slate-400 text-sm">No security events logged.</p>
+              {filteredSecurityEvents.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">
+                  <ShieldCheck className="h-8 w-8 mx-auto text-emerald-400/60 mb-2" />
+                  <p>No security events matching the selected filter.</p>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
@@ -1071,7 +1123,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 font-mono text-xs">
-                      {securityEvents.map((ev) => (
+                      {filteredSecurityEvents.map((ev) => (
                         <tr key={ev.id} className="hover:bg-white/[0.02]">
                           <td className="py-3 px-3">
                             <Badge variant={ev.severity === 'CRITICAL' || ev.severity === 'ERROR' ? 'rose' : ev.severity === 'WARNING' ? 'amber' : 'outline'} className="text-[10px]">
@@ -1096,15 +1148,51 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         {/* TAB 5: AUDIT LOGS */}
         {activeTab === 'audit' && (
           <Card className="border-white/10 bg-slate-900/40">
-            <CardHeader>
-              <CardTitle className="text-lg">Immutable Mutation & Audit Log Stream</CardTitle>
-              <CardDescription>
-                Read-only record of all administrative actions and system modifications in SQLite.
-              </CardDescription>
+            <CardHeader className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-lg">Immutable Mutation & Audit Log Stream</CardTitle>
+                <CardDescription>
+                  Read-only record of all administrative actions and transactional system modifications.
+                </CardDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0 w-full lg:w-auto">
+                <Input
+                  placeholder="Search logs by actor, operation..."
+                  value={auditSearchTerm}
+                  onChange={(e) => setAuditSearchTerm(e.target.value)}
+                  className="text-xs h-9 w-full sm:w-60"
+                  icon={<Search className="h-3.5 w-3.5" />}
+                />
+                <select
+                  className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full sm:w-auto"
+                  value={auditStatusFilter}
+                  onChange={(e) => setAuditStatusFilter(e.target.value)}
+                >
+                  <option value="all">Status: All</option>
+                  <option value="success">Success</option>
+                  <option value="failed">Failed / Error</option>
+                </select>
+                {(auditSearchTerm || auditStatusFilter !== 'all') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAuditSearchTerm('');
+                      setAuditStatusFilter('all');
+                    }}
+                    className="text-xs text-slate-400 hover:text-white px-2.5"
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              {logs.length === 0 ? (
-                <p className="text-center py-12 text-slate-400 text-sm">No audit logs recorded yet.</p>
+              {filteredLogs.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">
+                  <FileText className="h-8 w-8 mx-auto text-slate-600 mb-2" />
+                  <p>No audit logs matching current criteria.</p>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
@@ -1120,7 +1208,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 font-mono text-xs">
-                      {logs.map((l) => (
+                      {filteredLogs.map((l) => (
                         <tr key={l.id} className="hover:bg-white/[0.02]">
                           <td className="py-2.5 px-3 text-slate-500">#{l.id}</td>
                           <td className="py-2.5 px-3 text-slate-400 font-sans">{new Date(l.timestamp).toLocaleString()}</td>
