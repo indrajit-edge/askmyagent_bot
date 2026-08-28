@@ -963,6 +963,21 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                 </div>
               </div>
 
+              {/* Table Count Strip */}
+              <div className="flex items-center justify-between text-xs text-slate-400 mb-3 px-1">
+                <div className="flex items-center gap-2">
+                  <span>Showing <strong className="text-white">{users.length}</strong> {users.length === 1 ? 'user' : 'users'}</span>
+                  {(searchTerm || statusFilter !== 'all' || roleFilter !== 'all') && (
+                    <Badge variant="purple" className="text-[10px]">
+                      Filtered
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-500 hidden sm:block">
+                  Auto-synced from Telegram bot network
+                </div>
+              </div>
+
               {/* Users Table */}
               {initialLoading && users.length === 0 ? (
                 <div className="py-20 text-center text-slate-400">
