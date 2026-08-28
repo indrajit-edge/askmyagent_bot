@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, User, Key, ArrowLeft, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Lock, User, Key, ArrowLeft, ShieldAlert, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
@@ -17,6 +17,7 @@ interface LoginProps {
 export default function Login({ onLoginSuccess, onNavigateHome, onNavigatePrivacy, onNavigateTerms }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -125,11 +126,22 @@ export default function Login({ onLoginSuccess, onNavigateHome, onNavigatePrivac
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-300">Password</label>
                 <Input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   icon={<Key className="h-4 w-4" />}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-slate-500 hover:text-slate-300 transition-colors focus:outline-none p-1"
+                      tabIndex={-1}
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
                   required
                 />
               </div>
