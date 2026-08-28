@@ -680,56 +680,80 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
         {/* Quick KPI Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="border-white/10 bg-slate-900/60">
+          <Card 
+            onClick={() => setActiveTab('users')}
+            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-indigo-500/40 hover:bg-slate-900/90 transition-all duration-200 group"
+          >
             <CardContent className="p-5">
-              <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+              <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider group-hover:text-slate-300">
                 <span>Synchronized Users</span>
-                <Users className="h-4 w-4 text-indigo-400" />
+                <Users className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
               </div>
               <div className="text-3xl font-bold text-white mt-2">
                 {stats?.totalUsers ?? users.length}
               </div>
-              <p className="text-xs text-indigo-300 mt-1">Single source: Telegram Bot</p>
+              <p className="text-xs text-indigo-300 mt-1 flex items-center justify-between">
+                <span>Single source: Telegram Bot</span>
+                <span className="text-[10px] text-slate-500 group-hover:text-indigo-400 font-medium">View Users →</span>
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-slate-900/60">
+          <Card 
+            onClick={() => setActiveTab('connectors')}
+            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-emerald-500/40 hover:bg-slate-900/90 transition-all duration-200 group"
+          >
             <CardContent className="p-5">
-              <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+              <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider group-hover:text-slate-300">
                 <span>Encrypted Connections</span>
-                <Key className="h-4 w-4 text-emerald-400" />
+                <Key className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
               </div>
               <div className="text-3xl font-bold text-white mt-2">
                 {stats?.totalConnections ?? 0}
               </div>
-              <p className="text-xs text-emerald-300 mt-1">AES-256-GCM tokens at rest</p>
+              <p className="text-xs text-emerald-300 mt-1 flex items-center justify-between">
+                <span>AES-256-GCM tokens at rest</span>
+                <span className="text-[10px] text-slate-500 group-hover:text-emerald-400 font-medium">View Connectors →</span>
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-slate-900/60">
+          <Card 
+            onClick={() => setActiveTab('audit')}
+            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-cyan-500/40 hover:bg-slate-900/90 transition-all duration-200 group"
+          >
             <CardContent className="p-5">
-              <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+              <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider group-hover:text-slate-300">
                 <span>API Calls Executed</span>
-                <Activity className="h-4 w-4 text-cyan-400" />
+                <Activity className="h-4 w-4 text-cyan-400 group-hover:scale-110 transition-transform" />
               </div>
               <div className="text-3xl font-bold text-white mt-2">
                 {stats?.totalApiCalls ?? 0}
               </div>
-              <p className="text-xs text-cyan-300 mt-1">Tracked in relational api_logs</p>
+              <p className="text-xs text-cyan-300 mt-1 flex items-center justify-between">
+                <span>Tracked in relational api_logs</span>
+                <span className="text-[10px] text-slate-500 group-hover:text-cyan-400 font-medium">View Logs →</span>
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-slate-900/60">
+          <Card 
+            onClick={() => setActiveTab('health')}
+            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-emerald-500/40 hover:bg-slate-900/90 transition-all duration-200 group"
+          >
             <CardContent className="p-5">
-              <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider">
+              <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider group-hover:text-slate-300">
                 <span>System Status</span>
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                <ShieldCheck className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
               </div>
               <div className="text-2xl font-bold text-emerald-400 mt-2 flex items-center gap-2">
                 <span className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse" />
                 HEALTHY
               </div>
-              <p className="text-xs text-slate-400 mt-1">Uptime: {systemHealth ? formatUptime(systemHealth.uptimeSeconds) : 'Live'}</p>
+              <p className="text-xs text-slate-400 mt-1 flex items-center justify-between">
+                <span>Uptime: {systemHealth ? formatUptime(systemHealth.uptimeSeconds) : 'Live'}</span>
+                <span className="text-[10px] text-slate-500 group-hover:text-emerald-400 font-medium">View Health →</span>
+              </p>
             </CardContent>
           </Card>
         </div>
