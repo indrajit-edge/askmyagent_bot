@@ -5,7 +5,8 @@ import {
   Trash2, LogOut, RefreshCw, Bot, ShieldCheck, ArrowLeft,
   CheckCircle2, XCircle, AlertCircle, Sparkles, Filter, ChevronRight,
   Shield, AlertTriangle, Clock, HardDrive, Lock, ShieldAlert,
-  Power, Check, Info, Server, Flame, Sliders, Loader2
+  Power, Check, Info, Server, Flame, Sliders, Loader2,
+  LayoutDashboard, Layers, FileText, Home
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -527,22 +528,51 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer" onClick={onNavigateHome}>
-            <img src="/logo.jpg" alt="AskMyAgent Logo" className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl object-cover border border-indigo-500/30" />
-            <div>
-              <span className="font-bold text-sm sm:text-base text-white tracking-tight">AskMyAgent</span>
-              <span className="text-[11px] text-indigo-400 ml-1.5 font-mono hidden sm:inline">Admin Control Center</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={onNavigateHome}>
+            <img src="/logo.jpg" alt="AskMyAgent Logo" className="h-9 w-9 rounded-xl object-cover border border-indigo-500/30 shadow-md shadow-indigo-500/20" />
+            <div className="flex items-center gap-2.5">
+              <span className="font-bold text-base sm:text-lg text-white tracking-tight">AskMyAgent</span>
+              <Badge variant="purple" className="hidden sm:inline-flex text-[10px] uppercase font-mono tracking-wider font-semibold border-indigo-500/40 bg-indigo-500/10 text-indigo-300">
+                Admin Control Center
+              </Badge>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button variant="outline" size="sm" onClick={() => fetchData(false)} disabled={isRefreshing} className="px-2.5 sm:px-3 text-xs">
-              <RefreshCw className={cn("h-3.5 w-3.5 sm:mr-1.5", isRefreshing && "animate-spin text-indigo-400")} />
-              <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Authorized Admin Network</span>
+            </div>
+
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onNavigateHome}
+              className="hidden md:inline-flex text-slate-300 hover:text-white gap-1.5 text-xs px-3"
+            >
+              <Home className="h-3.5 w-3.5 text-indigo-400" />
+              <span>Public Portal</span>
             </Button>
-            <Button variant="secondary" size="sm" onClick={handleLogout} className="px-2.5 sm:px-3 text-xs">
-              <LogOut className="h-3.5 w-3.5 sm:mr-1.5 text-rose-400" />
+
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => fetchData(false)} 
+              disabled={isRefreshing} 
+              className="gap-1.5 text-xs border-white/10 hover:border-indigo-500/30 px-3"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5 text-indigo-400", isRefreshing && "animate-spin")} />
+              <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Sync Telemetry'}</span>
+            </Button>
+
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={handleLogout} 
+              className="gap-1.5 text-xs hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-300 transition-colors px-3"
+            >
+              <LogOut className="h-3.5 w-3.5 text-rose-400" />
               <span className="hidden sm:inline">Sign Out</span>
             </Button>
           </div>
@@ -582,41 +612,45 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
           )}
         </AnimatePresence>
 
-        {/* Top Header & Section Navigation Tabs */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 sm:mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Application Administration</h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Central control center for user management, connector health, audit logs, and security oversight.
-            </p>
-          </div>
+        {/* Top Header Section */}
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Application Administration</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            Central control center for user management, connector health, audit logs, and security oversight.
+          </p>
+        </div>
 
-          {/* Navigation Tabs (Smooth touch-scrollable on mobile) */}
-          <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-none pb-1 sm:pb-0">
-            <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-white/10 text-xs font-medium min-w-max">
-              {[
-                { id: 'overview', label: 'Overview' },
-                { id: 'users', label: `Users (${users.length})` },
-                { id: 'connectors', label: 'Connectors' },
-                { id: 'security', label: `Security (${securityEvents.length})` },
-                { id: 'audit', label: 'Audit Logs' },
-                { id: 'health', label: 'System Health' },
-                { id: 'backups', label: 'Backups' },
-                { id: 'emergency', label: 'Emergency' },
-              ].map((t) => (
+        {/* Navigation Tabs (Full-width modern segmented control bar with icons) */}
+        <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-none mb-8">
+          <div className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-900/80 border border-white/10 text-xs font-medium backdrop-blur-xl min-w-max shadow-lg shadow-black/20">
+            {[
+              { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+              { id: 'users', label: `Users (${users.length})`, icon: Users },
+              { id: 'connectors', label: 'Connectors', icon: Layers },
+              { id: 'security', label: `Security (${securityEvents.length})`, icon: ShieldCheck },
+              { id: 'audit', label: 'Audit Logs', icon: FileText },
+              { id: 'health', label: 'System Health', icon: Activity },
+              { id: 'backups', label: 'Backups', icon: HardDrive },
+              { id: 'emergency', label: 'Emergency', icon: Flame },
+            ].map((t) => {
+              const Icon = t.icon;
+              const isActive = activeTab === t.id;
+              return (
                 <button
                   key={t.id}
                   onClick={() => setActiveTab(t.id as any)}
-                  className={`px-3 py-2 rounded-lg transition-all whitespace-nowrap ${
-                    activeTab === t.id
-                      ? 'bg-indigo-600 text-white shadow-md font-semibold'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
+                  className={cn(
+                    "flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all duration-200 whitespace-nowrap cursor-pointer",
+                    isActive
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25 font-semibold"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  )}
                 >
-                  {t.label}
+                  <Icon className={cn("h-3.5 w-3.5", isActive ? "text-white" : "text-slate-400")} />
+                  <span>{t.label}</span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
