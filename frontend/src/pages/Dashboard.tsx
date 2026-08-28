@@ -281,6 +281,28 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     fetchData(false);
   }, [statusFilter, roleFilter]);
 
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut: Pressing '/' or 'Ctrl+K' focuses User Search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.tagName === 'SELECT';
+      if (isInput) return;
+
+      if (e.key === '/' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
+        e.preventDefault();
+        setActiveTab('users');
+        setTimeout(() => {
+          searchInputRef.current?.focus();
+        }, 50);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Auto-dismiss action notice banner after 4.5 seconds
   useEffect(() => {
     if (actionNotice) {
@@ -877,7 +899,8 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
                 <form onSubmit={handleSearchSubmit} className="flex gap-2 w-full md:max-w-md">
                   <Input
-                    placeholder="Search name, username, or Telegram ID..."
+                    ref={searchInputRef}
+                    placeholder="Search users... (Press / to focus)"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     icon={<Search className="h-4 w-4" />}
