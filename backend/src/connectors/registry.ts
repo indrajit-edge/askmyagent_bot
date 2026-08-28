@@ -9,6 +9,7 @@ import { TasksConnector } from './tasks';
 export class GoogleConnectorRegistry {
   private static instance: GoogleConnectorRegistry;
   private connectors: Map<string, BaseGoogleConnector> = new Map();
+  private toolMap: Map<string, BaseGoogleConnector> = new Map();
 
   private constructor() {
     this.register(new GmailConnector());
@@ -28,6 +29,9 @@ export class GoogleConnectorRegistry {
 
   register(connector: BaseGoogleConnector): void {
     this.connectors.set(connector.name.toLowerCase(), connector);
+    for (const tool of connector.getTools()) {
+      this.toolMap.set(tool.name, connector);
+    }
   }
 
   getConnector(provider: string): BaseGoogleConnector | undefined {
@@ -50,14 +54,12 @@ export class GoogleConnectorRegistry {
   }
 
   /**
-   * Finds the connector responsible for a tool name and executes it safely.
+   * Finds the connector responsible for a tool name and executes it safely (O(1) indexed).
    */
   async executeTool(chatId: number, toolName: string, args: Record<string, any>): Promise<any> {
-    for (const connector of this.connectors.values()) {
-      const toolNames = connector.getTools().map((t) => t.name);
-      if (toolNames.includes(toolName)) {
-        return connector.executeTool(chatId, toolName, args);
-      }
+    const connector = this.toolMap.get(toolName);
+    if (connector) {
+      return connector.executeTool(chatId, toolName, args);
     }
 
     throw new Error(`Tool "${toolName}" is not registered in any Google Workspace connector.`);

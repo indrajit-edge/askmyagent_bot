@@ -1426,7 +1426,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                 <div className="p-4 rounded-xl bg-slate-950 border border-white/5 space-y-2 text-xs">
                   <div className="flex justify-between py-1 border-b border-white/5">
                     <span className="text-slate-400">Database Engine:</span>
-                    <span className="text-white font-mono">{backupStatus?.databaseEngine || systemHealth?.dbEngine || 'Relational'}</span>
+                    <span className="text-white font-mono">{backupStatus?.databaseEngine || systemHealth?.dbEngine || 'PostgreSQL'}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-white/5">
                     <span className="text-slate-400">Automated Schedule:</span>
@@ -1453,6 +1453,33 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                     </p>
                   </div>
                   <span className="text-[11px] text-indigo-300 font-mono mt-3">Ref: docs/SERVER_OWNER.md</span>
+                </div>
+              </div>
+
+              {/* SSH Maintenance Commands Cheatsheet */}
+              <div className="p-4 rounded-xl bg-slate-950/90 border border-white/10 space-y-3">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">
+                  Server Owner SSH Commands (VPS Terminal)
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-slate-900 border border-white/5 text-xs font-mono">
+                    <span className="text-slate-300 truncate">pg_dump -U postgres -d askmyagent &gt; backup_$(date +%Y%m%d).sql</span>
+                    <button
+                      onClick={() => handleCopyText('pg_dump -U postgres -d askmyagent > backup_$(date +%Y%m%d).sql', 'pg_dump')}
+                      className="shrink-0 text-slate-400 hover:text-white px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 text-[11px] font-sans font-medium transition-colors cursor-pointer"
+                    >
+                      {copiedField === 'pg_dump' ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-slate-900 border border-white/5 text-xs font-mono">
+                    <span className="text-slate-300 truncate">psql -U postgres -d askmyagent &lt; backup.sql</span>
+                    <button
+                      onClick={() => handleCopyText('psql -U postgres -d askmyagent < backup.sql', 'pg_restore')}
+                      className="shrink-0 text-slate-400 hover:text-white px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 text-[11px] font-sans font-medium transition-colors cursor-pointer"
+                    >
+                      {copiedField === 'pg_restore' ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </CardContent>
