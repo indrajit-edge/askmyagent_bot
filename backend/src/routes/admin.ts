@@ -133,30 +133,39 @@ router.get('/verify', requireAdmin, (req: AuthenticatedRequest, res) => {
 // Platform Overview & Analytics Stats
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
-    const totalUsersResult = await db('users').count('id as count').first();
-    const totalConnectionsResult = await db('google_connections').count('* as count').first();
-    const totalLogsResult = await db('api_logs').count('id as count').first();
-
-    const connectionsByProvider = await db('google_connections')
-      .select('provider')
-      .count('* as count')
-      .groupBy('provider');
-
-    const logsByStatus = await db('api_logs')
-      .select('status')
-      .count('* as count')
-      .groupBy('status');
+    const [
+      totalUsersResult,
+      totalConnectionsResult,
+      totalLogsResult,
+      connectionsByProvider,
+      logsByStatus
+    ] = await Promise.all([
+      db('users').count('id as count').first(),
+      db('google_connections').count('* as count').first(),
+      db('api_logs').count('id as count').first(),
+      db('google_connections').select('provider').count('* as count').groupBy('provider'),
+      db('api_logs').select('status').count('* as count').groupBy('status')
+    ]);
 
     // Read-only integration with VM-bot-owned tables (Option A).
     // The Python bot owns bot_users/bot_usage; they may not exist in every environment.
     let botIntegration: { botUsers: number; botUsageRows: number } | null = null;
     try {
-      const hasBotUsers = await db.schema.hasTable('bot_users');
-      const hasBotUsage = await db.schema.hasTable('bot_usage');
+      const [hasBotUsers, hasBotUsage] = await Promise.all([
+        db.schema.hasTable('bot_users'),
+        db.schema.hasTable('bot_usage')
+      ]);
+
       if (hasBotUsers || hasBotUsage) {
-        const botUsersCount = hasBotUsers ? Number((await db('bot_users').count('* as count').first())?.count || 0) : 0;
-        const botUsageCount = hasBotUsage ? Number((await db('bot_usage').count('* as count').first())?.count || 0) : 0;
-        botIntegration = { botUsers: botUsersCount, botUsageRows: botUsageCount };
+        const [botUsersCountRes, botUsageCountRes] = await Promise.all([
+          hasBotUsers ? db('bot_users').count('* as count').first() : Promise.resolve(null),
+          hasBotUsage ? db('bot_usage').count('* as count').first() : Promise.resolve(null)
+        ]);
+
+        botIntegration = {
+          botUsers: Number(botUsersCountRes?.count || 0),
+          botUsageRows: Number(botUsageCountRes?.count || 0)
+        };
       }
     } catch (botErr: any) {
       console.warn('[AdminStats] bot_* integration tables unavailable:', botErr.message);
@@ -237,45 +246,36 @@ router.get('/connectors', requireAdmin, async (req, res) => {
     const registry = GoogleConnectorRegistry.getInstance();
     const allConnectors = registry.getAllConnectors();
 
-    const connectionCounts = await db('google_connections')
-      .select('provider')
-      .count('* as count')
-      .groupBy('provider');
+    const [connectionCounts, logStats, recentLogsAll] = await Promise.all([
+      db('google_connections').select('provider').count('* as count').groupBy('provider'),
+      db('api_logs').select('connector', 'status').count('* as count').groupBy('connector', 'status'),
+      db('api_logs').select('*').orderBy('timestamp', 'desc').limit(100)
+    ]);
 
-    const logStats = await db('api_logs')
-      .select('connector', 'status')
-      .count('* as count')
-      .groupBy('connector', 'status');
+    const connectorsData = allConnectors.map((connector) => {
+      const prov = connector.name.toLowerCase();
+      const connMatch = connectionCounts.find((c) => String(c.provider).toLowerCase() === prov);
+      const connectedUsers = Number(connMatch?.count || 0);
 
-    const connectorsData = await Promise.all(
-      allConnectors.map(async (connector) => {
-        const prov = connector.name.toLowerCase();
-        const connMatch = connectionCounts.find((c) => String(c.provider).toLowerCase() === prov);
-        const connectedUsers = Number(connMatch?.count || 0);
+      const logsForConn = logStats.filter((l) => String(l.connector).toLowerCase() === prov);
+      let totalRequests = 0;
+      let successfulRequests = 0;
+      let failedRequests = 0;
+      let quotaEvents = 0;
 
-        const logsForConn = logStats.filter((l) => String(l.connector).toLowerCase() === prov);
-        let totalRequests = 0;
-        let successfulRequests = 0;
-        let failedRequests = 0;
-        let quotaEvents = 0;
+      for (const l of logsForConn) {
+        const count = Number(l.count || 0);
+        totalRequests += count;
+        if (l.status === 'success') successfulRequests += count;
+        if (l.status === 'error') failedRequests += count;
+        if (l.status === 'quota_limit') quotaEvents += count;
+      }
 
-        for (const l of logsForConn) {
-          const count = Number(l.count || 0);
-          totalRequests += count;
-          if (l.status === 'success') successfulRequests += count;
-          if (l.status === 'error') failedRequests += count;
-          if (l.status === 'quota_limit') quotaEvents += count;
-        }
+      const recentLogsForProv = recentLogsAll.filter((l) => String(l.connector).toLowerCase() === prov).slice(0, 5);
+      const lastSuccess = recentLogsForProv.find((l) => l.status === 'success');
+      const lastFail = recentLogsForProv.find((l) => l.status === 'error' || l.status === 'quota_limit');
 
-        const recentLogs = await db('api_logs')
-          .where('connector', prov)
-          .orderBy('timestamp', 'desc')
-          .limit(5);
-
-        const lastSuccess = recentLogs.find((l) => l.status === 'success');
-        const lastFail = recentLogs.find((l) => l.status === 'error' || l.status === 'quota_limit');
-
-        const isGloballyDisabled = emergencyState.disabledConnectors.includes(prov);
+      const isGloballyDisabled = emergencyState.disabledConnectors.includes(prov);
 
         return {
           name: connector.name,
@@ -293,8 +293,7 @@ router.get('/connectors', requireAdmin, async (req, res) => {
           lastSuccessfulRequest: lastSuccess ? lastSuccess.timestamp : null,
           lastFailure: lastFail ? (lastFail.error_message || lastFail.operation) : null
         };
-      })
-    );
+      });
 
     res.json({ success: true, connectors: connectorsData });
   } catch (err: any) {

@@ -66,17 +66,18 @@ async function fetchVmBotUsers(): Promise<Record<string, any>[]> {
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { search, status, role } = req.query as Record<string, string>;
-    const users = await UserService.getUsersWithTelegram({ search, status, role });
+    const filtersActive = (status && status !== 'all') || (role && role !== 'all');
+
+    const [users, botUsers] = await Promise.all([
+      UserService.getUsersWithTelegram({ search, status, role }),
+      filtersActive ? Promise.resolve([]) : fetchVmBotUsers()
+    ]);
 
     const withSource = users.map((u: any) => ({ ...u, source: 'backend' as const }));
 
-    // status/role filters cannot match VM rows (no such columns) — skip merging then.
-    const filtersActive = (status && status !== 'all') || (role && role !== 'all');
-
     let result: Record<string, any>[] = withSource;
 
-    if (!filtersActive) {
-      const botUsers = await fetchVmBotUsers();
+    if (!filtersActive && botUsers.length > 0) {
       const botUserMap = new Map<string, any>(
         botUsers.map((b) => [String(b.chat_id), b])
       );

@@ -442,42 +442,42 @@ export class UserService {
 
     // Check per-connector status
     const allConnectors = GoogleConnectorRegistry.getInstance().getAllConnectors();
-    const userConnections = tgId ? await db('google_connections').where('chat_id', tgId) : [];
+    const [userConnections, userRecentLogs] = await Promise.all([
+      tgId ? db('google_connections').where('chat_id', tgId) : Promise.resolve([]),
+      tgId ? db('api_logs').where('chat_id', tgId).orderBy('timestamp', 'desc').limit(50) : Promise.resolve([])
+    ]);
 
-    const connectorStatuses = await Promise.all(
-      allConnectors.map(async (connector) => {
-        const connRow = userConnections.find((c) => c.provider.toLowerCase() === connector.name.toLowerCase());
-        const isConnected = !!connRow;
+    const connectorStatuses = allConnectors.map((connector) => {
+      const connRow = userConnections.find((c) => c.provider.toLowerCase() === connector.name.toLowerCase());
+      const isConnected = !!connRow;
 
-        let lastActivity: string | null = null;
-        let lastError: string | null = null;
+      let lastActivity: string | null = null;
+      let lastError: string | null = null;
 
-        if (tgId) {
-          const recentLogs = await db('api_logs')
-            .where('chat_id', tgId)
-            .andWhere('connector', connector.name.toLowerCase())
-            .orderBy('timestamp', 'desc')
-            .limit(5);
+      if (tgId) {
+        const recentLogsForConn = userRecentLogs
+          .filter((l) => String(l.connector).toLowerCase() === connector.name.toLowerCase())
+          .slice(0, 5);
 
-          const successLog = recentLogs.find((l) => l.status === 'success');
-          const errorLog = recentLogs.find((l) => l.status === 'error' || l.status === 'quota_limit');
+        const successLog = recentLogsForConn.find((l) => l.status === 'success');
+        const errorLog = recentLogsForConn.find((l) => l.status === 'error' || l.status === 'quota_limit');
 
-          if (successLog) lastActivity = successLog.timestamp;
-          if (errorLog) lastError = errorLog.error_message || errorLog.operation;
+        if (successLog) lastActivity = successLog.timestamp;
+        if (errorLog) lastError = errorLog.error_message || errorLog.operation;
+      }
+
+      let tokenStatus: 'CONNECTED' | 'DISCONNECTED' | 'EXPIRED' | 'REVOKED' | 'ERROR' = 'DISCONNECTED';
+      if (isConnected) {
+        tokenStatus = 'CONNECTED';
+        if (connRow.token_expiry && new Date(connRow.token_expiry).getTime() < Date.now()) {
+          tokenStatus = 'EXPIRED';
         }
+      }
 
-        let tokenStatus: 'CONNECTED' | 'DISCONNECTED' | 'EXPIRED' | 'REVOKED' | 'ERROR' = 'DISCONNECTED';
-        if (isConnected) {
-          tokenStatus = 'CONNECTED';
-          if (connRow.token_expiry && new Date(connRow.token_expiry).getTime() < Date.now()) {
-            tokenStatus = 'EXPIRED';
-          }
-        }
-
-        return {
-          name: connector.name,
-          title: connector.title,
-          icon: connector.icon,
+      return {
+        name: connector.name,
+        title: connector.title,
+        icon: connector.icon,
           connected: isConnected,
           email: connRow ? connRow.email : null,
           scopes: connRow && connRow.scopes ? connRow.scopes.split(' ') : connector.scopes,
@@ -486,8 +486,7 @@ export class UserService {
           lastError,
           tokenStatus
         };
-      })
-    );
+      });
 
     return {
       ...user,
