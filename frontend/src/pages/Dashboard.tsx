@@ -828,6 +828,8 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
           </Card>
         </div>
 
+        {/* TAB VIEWS CONTAINER */}
+        <div className="min-h-[500px]">
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -1502,6 +1504,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
             </CardContent>
           </Card>
         )}
+        </div>
       </main>
 
       {/* DETAILED USER PROFILE MODAL */}

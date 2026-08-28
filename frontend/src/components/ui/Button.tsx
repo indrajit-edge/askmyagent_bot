@@ -10,15 +10,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'md', isLoading, children, disabled, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer transform-gpu';
+    const baseStyles = 'inline-flex items-center justify-center font-medium transition-colors duration-150 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer';
 
     const variants = {
-      default: 'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/25 active:scale-[0.98]',
-      glow: 'relative bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 text-white shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(99,102,241,0.6)] hover:scale-[1.02] active:scale-[0.98]',
-      outline: 'border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 text-white active:scale-[0.98]',
-      secondary: 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/50 active:scale-[0.98]',
+      default: 'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/25',
+      glow: 'relative bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 text-white shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(99,102,241,0.6)]',
+      outline: 'border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 text-white',
+      secondary: 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/50',
       ghost: 'hover:bg-white/[0.06] text-slate-300 hover:text-white',
-      destructive: 'bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white shadow-lg shadow-rose-500/20 active:scale-[0.98]',
+      destructive: 'bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white shadow-lg shadow-rose-500/20',
     };
 
     const sizes = {

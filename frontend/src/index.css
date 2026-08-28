@@ -49,6 +49,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -56,6 +58,7 @@
     overflow-x: hidden;
     background-color: #050814;
     touch-action: manipulation;
+    min-height: 100vh;
   }
 
   /* GPU-Accelerated Fixed Background (Eliminates scroll repaint lag) */
