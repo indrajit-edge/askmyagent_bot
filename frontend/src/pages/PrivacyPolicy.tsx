@@ -43,10 +43,11 @@ export default function PrivacyPolicy({ onNavigateHome, onNavigateTerms }: Priva
             variant="glow" 
             size="sm" 
             onClick={() => window.open(telegramBotUrl, '_blank')}
-            className="gap-1.5 hidden sm:inline-flex text-xs px-3"
+            className="gap-1.5 text-xs px-2.5 sm:px-3"
           >
             <Send className="h-3.5 w-3.5" />
-            Open Bot
+            <span className="hidden sm:inline">Open Bot</span>
+            <span className="sm:hidden">Bot</span>
           </Button>
         </div>
       </nav>
