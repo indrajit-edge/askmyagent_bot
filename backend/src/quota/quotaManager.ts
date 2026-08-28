@@ -20,6 +20,15 @@ export class QuotaManager {
     const key = `${chatId}:${connector.toLowerCase()}`;
     const now = Date.now();
 
+    // Bounded memory cleanup for expired rate limit buckets
+    if (this.userLimits.size > 500) {
+      for (const [k, b] of this.userLimits.entries()) {
+        if (now > b.resetAt) {
+          this.userLimits.delete(k);
+        }
+      }
+    }
+
     let bucket = this.userLimits.get(key);
 
     if (!bucket || now > bucket.resetAt) {
