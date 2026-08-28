@@ -1463,10 +1463,21 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         {activeTab === 'emergency' && (
           <Card className="border-rose-500/30 bg-slate-900/40">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 text-rose-400">
-                <Flame className="h-5 w-5 text-rose-400" />
-                Emergency Application Controls
-              </CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <CardTitle className="text-lg flex items-center gap-2 text-rose-400">
+                  <Flame className="h-5 w-5 text-rose-400" />
+                  Emergency Application Controls
+                </CardTitle>
+                {(emergencyState.pauseNewOAuth || emergencyState.maintenanceMode) ? (
+                  <Badge variant="rose" className="self-start sm:self-auto text-[10px]">
+                    CIRCUIT BREAKER ACTIVE
+                  </Badge>
+                ) : (
+                  <Badge variant="emerald" className="self-start sm:self-auto text-[10px]">
+                    ALL SYSTEMS NORMAL
+                  </Badge>
+                )}
+              </div>
               <CardDescription>
                 Protected application-level circuit breakers. All toggles require admin authentication and log audit events.
               </CardDescription>

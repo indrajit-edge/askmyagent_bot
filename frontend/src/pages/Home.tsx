@@ -4,7 +4,8 @@ import {
   Bot, ShieldCheck, Zap, Sparkles, Mail, Calendar, HardDrive, 
   FileText, Table2, CheckSquare, KeyRound, ChevronRight, Lock, 
   ArrowRight, CheckCircle2, Shield, UserCheck, Check, Layers,
-  MessageSquare, Cpu, RefreshCw, Send, ArrowDown, Database
+  MessageSquare, Cpu, RefreshCw, Send, ArrowDown, Database,
+  ArrowUp, Copy
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -35,6 +36,26 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
   const adminUsername = 'indrajit_edge';
   const adminProfileUrl = `https://t.me/${adminUsername}`;
   const [isAdminAllowed, setIsAdminAllowed] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleCopyPrompt = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedPrompt(text);
+    setTimeout(() => setCopiedPrompt(null), 2000);
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     apiFetch('/api/admin/access-check')
@@ -319,12 +340,31 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
                   "Find the latest email about my project.",
                   "Find my project report.",
                   "Show me my tasks."
-                ].map((q) => (
-                  <div key={q} className="p-3 rounded-xl bg-slate-900 border border-white/10 text-xs font-mono text-slate-300 flex items-center gap-2">
-                    <span className="text-indigo-400">💬</span>
-                    <span>"{q}"</span>
-                  </div>
-                ))}
+                ].map((q) => {
+                  const isCopied = copiedPrompt === q;
+                  return (
+                    <button
+                      key={q}
+                      onClick={() => handleCopyPrompt(q)}
+                      title="Click to copy prompt"
+                      className="p-3 rounded-xl bg-slate-900/90 border border-white/10 hover:border-indigo-500/40 hover:bg-slate-800/80 text-xs font-mono text-slate-300 flex items-center justify-between gap-2 transition-colors duration-150 text-left group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-indigo-400 shrink-0">💬</span>
+                        <span className="truncate">"{q}"</span>
+                      </div>
+                      <div className="shrink-0 text-slate-500 group-hover:text-indigo-400">
+                        {isCopied ? (
+                          <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-sans font-semibold">
+                            <Check className="h-3.5 w-3.5" /> Copied
+                          </span>
+                        ) : (
+                          <Copy className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -727,6 +767,17 @@ export default function Home({ onNavigateLogin, onNavigateAdmin, onNavigatePriva
           <p className="text-slate-500 text-xs">© 2026 AskMyAgent. All rights reserved.</p>
         </div>
       </footer>
+
+      {/* Floating Scroll to Top Action */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          title="Scroll to Top"
+          className="fixed bottom-6 right-6 z-50 p-3 rounded-2xl bg-indigo-600/90 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 border border-indigo-400/30 transition-all duration-200 hover:scale-105 cursor-pointer backdrop-blur-md"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
