@@ -163,6 +163,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [editFormData, setEditFormData] = useState({ name: '', role: 'user', status: 'active' });
   const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Emergency Controls State
@@ -411,6 +412,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     const identifier = user.id ?? user.telegram?.telegramId;
     if (!identifier) return;
 
+    const previousUsers = [...users];
     const nextRole = user.role === 'admin' ? 'user' : 'admin';
     // Optimistic UI update
     setUsers(prev => prev.map(u => {
@@ -431,10 +433,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         setActionNotice({ type: 'success', text: `User "${user.name}" role updated to ${nextRole.toUpperCase()}.` });
         fetchData(false);
       } else {
+        setUsers(previousUsers);
         setActionNotice({ type: 'error', text: data.error || 'Failed to update role' });
         fetchData(false);
       }
     } catch {
+      setUsers(previousUsers);
       setActionNotice({ type: 'error', text: 'Network error updating role.' });
       fetchData(false);
     }
@@ -445,6 +449,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     const identifier = user.id ?? user.telegram?.telegramId;
     if (!identifier) return;
 
+    const previousUsers = [...users];
     const nextStatus = user.status === 'active' ? 'disabled' : 'active';
     // Optimistic UI update
     setUsers(prev => prev.map(u => {
@@ -465,10 +470,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         fetchData(false);
       } else {
         const data = await res.json();
+        setUsers(previousUsers);
         setActionNotice({ type: 'error', text: data.error || 'Failed to update status' });
         fetchData(false);
       }
     } catch {
+      setUsers(previousUsers);
       setActionNotice({ type: 'error', text: 'Network error toggling status.' });
       fetchData(false);
     }
@@ -476,13 +483,16 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
   // Execute Delete
   const handleExecuteDelete = async () => {
-    if (!userToDelete) return;
+    if (!userToDelete || isDeleting) return;
     const identifier = userToDelete.id ?? userToDelete.telegram?.telegramId;
     if (!identifier) return;
 
-    // Optimistic UI update: Remove user immediately from local list
+    setIsDeleting(true);
+    const previousUsers = [...users];
     const targetId = userToDelete.id;
     const targetChatId = userToDelete.telegram?.telegramId;
+
+    // Optimistic UI update: Remove user immediately from local list
     setUsers(prev => prev.filter(u => {
       if (targetId && u.id === targetId) return false;
       if (targetChatId && u.telegram?.telegramId === targetChatId) return false;
@@ -499,12 +509,16 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         fetchData(false);
       } else {
         const data = await res.json();
+        setUsers(previousUsers);
         setActionNotice({ type: 'error', text: data.error || 'Failed to delete user' });
         fetchData(false);
       }
     } catch {
+      setUsers(previousUsers);
       setActionNotice({ type: 'error', text: 'Network error deleting user.' });
       fetchData(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1713,7 +1727,7 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               <Button variant="ghost" size="sm" onClick={() => setUserToDelete(null)}>
                 Cancel
               </Button>
-              <Button variant="destructive" size="sm" onClick={handleExecuteDelete}>
+              <Button variant="destructive" size="sm" onClick={handleExecuteDelete} isLoading={isDeleting}>
                 Delete Permanently
               </Button>
             </div>
