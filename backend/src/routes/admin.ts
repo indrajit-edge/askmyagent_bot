@@ -445,8 +445,8 @@ router.post('/emergency', requireAdmin, async (req: AuthenticatedRequest, res) =
   res.json({ success: true, emergencyState });
 });
 
-// Immutable Audit Logs Stream
-router.get('/audit-logs', requireAdmin, async (req, res) => {
+// Immutable Audit Logs Stream (supports /audit-logs and /logs)
+router.get(['/audit-logs', '/logs'], requireAdmin, async (req, res) => {
   try {
     const logs = await db('api_logs').select('*').orderBy('timestamp', 'desc').limit(100);
     res.json({ success: true, logs });

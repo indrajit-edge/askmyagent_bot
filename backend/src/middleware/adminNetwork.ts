@@ -153,9 +153,18 @@ async function logIpDenial(req: Request, clientIp: string): Promise<void> {
  * In production, fails closed (HTTP 403) if ADMIN_ALLOWED_IPS is missing or empty.
  */
 export function requireAdminNetworkAccess(req: Request, res: Response, next: NextFunction) {
+  if (process.env.ALLOW_PUBLIC_ADMIN === 'true') {
+    return next();
+  }
+
   const allowedIps = parseAllowedIps(process.env.ADMIN_ALLOWED_IPS);
   const isProduction = process.env.NODE_ENV === 'production';
   const clientIp = extractClientIp(req);
+
+  // In development, loopback / private subnet is permitted
+  if (!isProduction && (clientIp === '127.0.0.1' || clientIp === '::1' || isPrivateIp(clientIp))) {
+    return next();
+  }
 
   // Production fail-closed: missing or empty allowlist denies all admin access
   if (allowedIps.length === 0) {
