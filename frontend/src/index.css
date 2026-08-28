@@ -42,6 +42,7 @@
   * {
     @apply border-border;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
   }
   html {
     scroll-behavior: smooth;
@@ -54,6 +55,7 @@
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow-x: hidden;
     background-color: #050814;
+    touch-action: manipulation;
   }
 
   /* GPU-Accelerated Fixed Background (Eliminates scroll repaint lag) */

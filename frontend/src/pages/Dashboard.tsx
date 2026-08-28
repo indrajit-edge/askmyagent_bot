@@ -6,7 +6,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Sparkles, Filter, ChevronRight,
   Shield, AlertTriangle, Clock, HardDrive, Lock, ShieldAlert,
   Power, Check, Info, Server, Flame, Sliders, Loader2,
-  LayoutDashboard, Layers, FileText, Home
+  LayoutDashboard, Layers, FileText, Home, Copy, Download
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -170,6 +170,40 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
     pauseNewOAuth: false,
     maintenanceMode: false
   });
+
+  // Micro-UX states
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopyText = (text: string | number, fieldId: string) => {
+    if (text === undefined || text === null || text === '') return;
+    navigator.clipboard.writeText(String(text));
+    setCopiedField(fieldId);
+    setTimeout(() => {
+      setCopiedField(null);
+    }, 2000);
+  };
+
+  const handleExportLogsCsv = () => {
+    if (filteredLogs.length === 0) return;
+    const headers = ['ID', 'Timestamp', 'Actor/ChatID', 'Category', 'Operation', 'Status', 'Details'];
+    const rows = filteredLogs.map(l => [
+      l.id,
+      `"${new Date(l.timestamp).toISOString()}"`,
+      `"${l.chat_id || 'Admin'}"`,
+      `"${l.connector}"`,
+      `"${l.operation}"`,
+      `"${l.status}"`,
+      `"${(l.error_message || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `askmyagent_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const fetchData = async (isInitial = false) => {
     try {
@@ -1209,6 +1243,17 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                     Reset
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportLogsCsv}
+                  disabled={filteredLogs.length === 0}
+                  className="gap-1.5 text-xs text-slate-300 hover:text-white shrink-0 h-9 px-3 border-white/10"
+                  title="Export filtered audit logs as CSV"
+                >
+                  <Download className="h-3.5 w-3.5 text-indigo-400" />
+                  <span>Export CSV</span>
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -1425,9 +1470,25 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               </div>
               <div>
                 <span className="text-xs text-slate-400 block">Telegram Username</span>
-                <span className="text-cyan-400 text-xs font-medium block truncate">
-                  {viewingProfile.telegram?.username ? `@${viewingProfile.telegram.username}` : 'None'}
-                </span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-cyan-400 text-xs font-medium truncate">
+                    {viewingProfile.telegram?.username ? `@${viewingProfile.telegram.username}` : 'None'}
+                  </span>
+                  {viewingProfile.telegram?.username && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(`@${viewingProfile.telegram!.username}`, 'username')}
+                      className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors shrink-0"
+                      title="Copy username"
+                    >
+                      {copiedField === 'username' ? (
+                        <Check className="h-3 w-3 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
               <div>
                 <span className="text-xs text-slate-400 block">Role</span>
@@ -1443,7 +1504,23 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
               </div>
               <div>
                 <span className="text-xs text-slate-400 block">Telegram ID</span>
-                <span className="font-mono text-indigo-300 text-xs">{viewingProfile.telegram?.telegramId || 'None'}</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="font-mono text-indigo-300 text-xs">{viewingProfile.telegram?.telegramId || 'None'}</span>
+                  {viewingProfile.telegram?.telegramId && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(viewingProfile.telegram!.telegramId, 'telegramId')}
+                      className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors shrink-0"
+                      title="Copy Telegram ID"
+                    >
+                      {copiedField === 'telegramId' ? (
+                        <Check className="h-3 w-3 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
               <div>
                 <span className="text-xs text-slate-400 block">Source</span>
