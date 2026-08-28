@@ -171,7 +171,7 @@ export class GoogleTokenStore {
           const expiresIn = data.expires_in || 3600;
           const newExpiry = new Date(Date.now() + expiresIn * 1000);
 
-          // Update SQLite with encrypted new token
+          // Update database with encrypted new token
           await this.storeCredentials(
             chatId,
             provider,
