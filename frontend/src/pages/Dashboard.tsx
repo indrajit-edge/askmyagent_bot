@@ -734,9 +734,9 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
                   key={t.id}
                   onClick={() => setActiveTab(t.id as any)}
                   className={cn(
-                    "flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all duration-200 whitespace-nowrap cursor-pointer",
+                    "flex items-center gap-2 px-3.5 py-2 rounded-xl transition-colors duration-150 whitespace-nowrap cursor-pointer font-medium select-none text-xs",
                     isActive
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25 font-semibold"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -752,12 +752,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card 
             onClick={() => setActiveTab('users')}
-            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-indigo-500/40 hover:bg-slate-900/90 transition-all duration-200 group"
+            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-indigo-500/40 hover:bg-slate-900/80 transition-colors duration-150 group"
           >
             <CardContent className="p-5">
               <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider group-hover:text-slate-300">
                 <span>Synchronized Users</span>
-                <Users className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+                <Users className="h-4 w-4 text-indigo-400" />
               </div>
               <div className="text-3xl font-bold text-white mt-2">
                 {stats?.totalUsers ?? users.length}
@@ -771,12 +771,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
           <Card 
             onClick={() => setActiveTab('connectors')}
-            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-emerald-500/40 hover:bg-slate-900/90 transition-all duration-200 group"
+            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-emerald-500/40 hover:bg-slate-900/80 transition-colors duration-150 group"
           >
             <CardContent className="p-5">
               <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider group-hover:text-slate-300">
                 <span>Encrypted Connections</span>
-                <Key className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                <Key className="h-4 w-4 text-emerald-400" />
               </div>
               <div className="text-3xl font-bold text-white mt-2">
                 {stats?.totalConnections ?? 0}
@@ -790,12 +790,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
           <Card 
             onClick={() => setActiveTab('audit')}
-            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-cyan-500/40 hover:bg-slate-900/90 transition-all duration-200 group"
+            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-cyan-500/40 hover:bg-slate-900/80 transition-colors duration-150 group"
           >
             <CardContent className="p-5">
               <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider group-hover:text-slate-300">
                 <span>API Calls Executed</span>
-                <Activity className="h-4 w-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                <Activity className="h-4 w-4 text-cyan-400" />
               </div>
               <div className="text-3xl font-bold text-white mt-2">
                 {stats?.totalApiCalls ?? 0}
@@ -809,12 +809,12 @@ export default function Dashboard({ onLogout, onNavigateHome }: DashboardProps) 
 
           <Card 
             onClick={() => setActiveTab('health')}
-            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-emerald-500/40 hover:bg-slate-900/90 transition-all duration-200 group"
+            className="border-white/10 bg-slate-900/60 cursor-pointer hover:border-emerald-500/40 hover:bg-slate-900/80 transition-colors duration-150 group"
           >
             <CardContent className="p-5">
               <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider group-hover:text-slate-300">
                 <span>System Status</span>
-                <ShieldCheck className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                <ShieldCheck className="h-4 w-4 text-emerald-400" />
               </div>
               <div className="text-2xl font-bold text-emerald-400 mt-2 flex items-center gap-2">
                 <span className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse" />
