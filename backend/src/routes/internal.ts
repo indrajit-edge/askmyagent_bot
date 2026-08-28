@@ -273,27 +273,36 @@ router.get('/oauth/status', async (req: Request, res: Response) => {
     const providerParam = req.query.provider ? String(req.query.provider).toLowerCase() : null;
 
     if (providerParam) {
-      const connected = await GoogleTokenStore.isConnected(chatId, providerParam);
-      let email: string | null = null;
-      if (connected) {
-        const creds = await GoogleTokenStore.getCredentials(chatId, providerParam);
-        email = creds?.email ?? null;
-      }
+      const conn = await db('google_connections')
+        .where({ chat_id: chatId, provider: providerParam })
+        .select('email')
+        .first();
+
+      const connected = !!conn;
+      const email = conn?.email ?? null;
       return res.json({ success: true, provider: providerParam, connected, email });
     }
 
     const registry = GoogleConnectorRegistry.getInstance();
-    const connections = await Promise.all(
-      registry.getAllConnectors().map(async (connector) => {
-        const connected = await GoogleTokenStore.isConnected(chatId, connector.name);
-        let email: string | null = null;
-        if (connected) {
-          const creds = await GoogleTokenStore.getCredentials(chatId, connector.name);
-          email = creds?.email ?? null;
-        }
-        return { provider: connector.name.toLowerCase(), connected, email };
-      })
+    const allConnectors = registry.getAllConnectors();
+
+    const dbConnections = await db('google_connections')
+      .where('chat_id', chatId)
+      .select('provider', 'email');
+
+    const connMap = new Map(
+      dbConnections.map((c) => [String(c.provider).toLowerCase(), c.email])
     );
+
+    const connections = allConnectors.map((connector) => {
+      const prov = connector.name.toLowerCase();
+      const email = connMap.get(prov) || null;
+      return {
+        provider: prov,
+        connected: !!email,
+        email
+      };
+    });
 
     // Primary shape: providers map keyed by lowercase name (bot.py reads this).
     // Legacy shape: connections array kept so existing consumers don't break.
