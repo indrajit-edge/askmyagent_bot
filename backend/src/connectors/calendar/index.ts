@@ -38,6 +38,18 @@ export class CalendarConnector extends BaseGoogleConnector {
           result = await this.searchEvents(creds.accessToken, args.query);
           break;
 
+        case 'calendar_create_event':
+          result = await this.createEvent(creds.accessToken, args);
+          break;
+
+        case 'calendar_update_event':
+          result = await this.updateEvent(creds.accessToken, args);
+          break;
+
+        case 'calendar_delete_event':
+          result = await this.deleteEvent(creds.accessToken, args.event_id);
+          break;
+
         default:
           throw new Error(`Unknown calendar tool operation: ${toolName}`);
       }
@@ -180,6 +192,192 @@ export class CalendarConnector extends BaseGoogleConnector {
           status: 'confirmed'
         }
       ]
+    };
+  }
+
+  private async createEvent(
+    accessToken: string,
+    args: {
+      summary: string;
+      start: string;
+      end: string;
+      description?: string;
+      location?: string;
+      attendees?: string[];
+      timeZone?: string;
+    }
+  ) {
+    if (!args.summary || !args.start || !args.end) {
+      throw new Error('summary, start, and end are required to create a calendar event.');
+    }
+
+    const eventPayload: any = {
+      summary: args.summary,
+      start: args.start.includes('T') ? { dateTime: args.start } : { date: args.start },
+      end: args.end.includes('T') ? { dateTime: args.end } : { date: args.end }
+    };
+
+    if (args.timeZone) {
+      if (eventPayload.start.dateTime) eventPayload.start.timeZone = args.timeZone;
+      if (eventPayload.end.dateTime) eventPayload.end.timeZone = args.timeZone;
+    }
+
+    if (args.description) eventPayload.description = args.description;
+    if (args.location) eventPayload.location = args.location;
+    if (args.attendees && Array.isArray(args.attendees)) {
+      eventPayload.attendees = args.attendees.map((email: string) => ({ email }));
+    }
+
+    if (!accessToken.startsWith('mock_') && !accessToken.startsWith('iv:')) {
+      try {
+        const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(eventPayload)
+        });
+
+        if (!res.ok) {
+          const errorData = await res.text().catch(() => '');
+          throw new Error(`Google Calendar API error (${res.status}): ${errorData || 'Failed to create event'}`);
+        }
+
+        const data = await res.json();
+        return {
+          event_id: data.id,
+          summary: data.summary,
+          start: data.start?.dateTime || data.start?.date,
+          end: data.end?.dateTime || data.end?.date,
+          status: data.status,
+          htmlLink: data.htmlLink,
+          created: true
+        };
+      } catch (e: any) {
+        if (!accessToken.startsWith('mock_')) throw e;
+      }
+    }
+
+    return {
+      event_id: `evt_${Date.now()}`,
+      summary: args.summary,
+      start: args.start,
+      end: args.end,
+      location: args.location || null,
+      description: args.description || null,
+      status: 'confirmed',
+      created: true
+    };
+  }
+
+  private async updateEvent(
+    accessToken: string,
+    args: {
+      event_id: string;
+      summary?: string;
+      start?: string;
+      end?: string;
+      description?: string;
+      location?: string;
+      timeZone?: string;
+    }
+  ) {
+    if (!args.event_id) {
+      throw new Error('event_id is required to update a calendar event.');
+    }
+
+    const patchPayload: any = {};
+    if (args.summary !== undefined) patchPayload.summary = args.summary;
+    if (args.description !== undefined) patchPayload.description = args.description;
+    if (args.location !== undefined) patchPayload.location = args.location;
+
+    if (args.start !== undefined) {
+      patchPayload.start = args.start.includes('T') ? { dateTime: args.start } : { date: args.start };
+      if (args.timeZone && patchPayload.start.dateTime) patchPayload.start.timeZone = args.timeZone;
+    }
+
+    if (args.end !== undefined) {
+      patchPayload.end = args.end.includes('T') ? { dateTime: args.end } : { date: args.end };
+      if (args.timeZone && patchPayload.end.dateTime) patchPayload.end.timeZone = args.timeZone;
+    }
+
+    if (!accessToken.startsWith('mock_') && !accessToken.startsWith('iv:')) {
+      try {
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(args.event_id)}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(patchPayload)
+        });
+
+        if (!res.ok) {
+          const errorData = await res.text().catch(() => '');
+          throw new Error(`Google Calendar API error (${res.status}): ${errorData || 'Failed to update event'}`);
+        }
+
+        const data = await res.json();
+        return {
+          event_id: data.id,
+          summary: data.summary,
+          start: data.start?.dateTime || data.start?.date,
+          end: data.end?.dateTime || data.end?.date,
+          status: data.status,
+          htmlLink: data.htmlLink,
+          updated: true
+        };
+      } catch (e: any) {
+        if (!accessToken.startsWith('mock_')) throw e;
+      }
+    }
+
+    return {
+      event_id: args.event_id,
+      summary: args.summary || 'Updated Event',
+      start: args.start || new Date().toISOString(),
+      end: args.end || new Date(Date.now() + 3600000).toISOString(),
+      location: args.location || null,
+      description: args.description || null,
+      status: 'confirmed',
+      updated: true
+    };
+  }
+
+  private async deleteEvent(accessToken: string, eventId: string) {
+    if (!eventId) {
+      throw new Error('event_id is required to delete a calendar event.');
+    }
+
+    if (!accessToken.startsWith('mock_') && !accessToken.startsWith('iv:')) {
+      try {
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+
+        if (!res.ok && res.status !== 404 && res.status !== 410) {
+          const errorData = await res.text().catch(() => '');
+          throw new Error(`Google Calendar API error (${res.status}): ${errorData || 'Failed to delete event'}`);
+        }
+
+        return {
+          event_id: eventId,
+          deleted: true,
+          message: `Calendar event ${eventId} was deleted successfully.`
+        };
+      } catch (e: any) {
+        if (!accessToken.startsWith('mock_')) throw e;
+      }
+    }
+
+    return {
+      event_id: eventId,
+      deleted: true,
+      message: `Calendar event ${eventId} was deleted successfully.`
     };
   }
 }
