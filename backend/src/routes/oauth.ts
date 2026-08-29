@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { GoogleOAuthService } from '../oauth/oauthService';
 import { isAllowedOrigin, safeErrorMessage } from '../utils/security';
+import { sendTelegramMessage, humanizeProvider } from '../utils/telegramNotify';
 
 const router = Router();
 
@@ -14,6 +15,14 @@ router.post('/callback', async (req, res) => {
 
   try {
     const result = await GoogleOAuthService.handleCallback(code, state);
+
+    // Send one-way confirmation message back to the Telegram chat
+    const friendlyProvider = humanizeProvider(result.provider);
+    await sendTelegramMessage(
+      result.chatId,
+      `✅ ${friendlyProvider} connected successfully! You can now ask me to use it.`
+    );
+
     return res.json({
       success: true,
       message: `Google Workspace connection for ${result.provider} established successfully!`,
@@ -42,6 +51,14 @@ router.get('/callback', async (req, res) => {
 
   try {
     const result = await GoogleOAuthService.handleCallback(code, state);
+
+    // Send one-way confirmation message back to the Telegram chat
+    const friendlyProvider = humanizeProvider(result.provider);
+    await sendTelegramMessage(
+      result.chatId,
+      `✅ ${friendlyProvider} connected successfully! You can now ask me to use it.`
+    );
+
     return res.redirect(`${frontendUrl}/oauth/callback?status=success&provider=${encodeURIComponent(result.provider)}&email=${encodeURIComponent(result.email)}`);
   } catch (err: any) {
     console.error('[OAuth] Direct callback failed:', err);

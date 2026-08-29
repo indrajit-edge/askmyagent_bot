@@ -45,3 +45,6 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      # Outbound Telegram notifications only (The VM bot owns all inbound polling; backend NEVER calls getUpdates/webhooks)
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
