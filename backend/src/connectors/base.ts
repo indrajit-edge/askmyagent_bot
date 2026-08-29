@@ -7,6 +7,10 @@ export interface ToolParameter {
   description: string;
   required?: boolean;
   enum?: string[];
+  items?: {
+    type: string;
+    description?: string;
+  };
 }
 
 export interface ToolDefinition {

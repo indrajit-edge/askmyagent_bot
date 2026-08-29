@@ -39,15 +39,31 @@ export class CalendarConnector extends BaseGoogleConnector {
           break;
 
         case 'calendar_create_event':
-          result = await this.createEvent(creds.accessToken, args);
+          result = await this.createEvent(creds.accessToken, {
+            summary: String(args?.summary || ''),
+            start: String(args?.start || ''),
+            end: String(args?.end || ''),
+            description: args?.description !== undefined ? String(args.description) : undefined,
+            location: args?.location !== undefined ? String(args.location) : undefined,
+            attendees: Array.isArray(args?.attendees) ? args.attendees.map(String) : undefined,
+            timeZone: args?.timeZone !== undefined ? String(args.timeZone) : undefined
+          });
           break;
 
         case 'calendar_update_event':
-          result = await this.updateEvent(creds.accessToken, args);
+          result = await this.updateEvent(creds.accessToken, {
+            event_id: String(args?.event_id || ''),
+            summary: args?.summary !== undefined ? String(args.summary) : undefined,
+            start: args?.start !== undefined ? String(args.start) : undefined,
+            end: args?.end !== undefined ? String(args.end) : undefined,
+            description: args?.description !== undefined ? String(args.description) : undefined,
+            location: args?.location !== undefined ? String(args.location) : undefined,
+            timeZone: args?.timeZone !== undefined ? String(args.timeZone) : undefined
+          });
           break;
 
         case 'calendar_delete_event':
-          result = await this.deleteEvent(creds.accessToken, args.event_id);
+          result = await this.deleteEvent(creds.accessToken, String(args?.event_id || ''));
           break;
 
         default:
