@@ -136,8 +136,8 @@ router.post('/tool-call', async (req: Request, res: Response) => {
 /**
  * POST /api/internal/oauth/start
  * Body: { chat_id: number, provider: string, profile?: {...} }
- * Returns the Google consent URL for connecting a provider (formerly the
- * /connectcalendar bot command flow).
+ * Returns the Google consent URL for connecting a provider (via the
+ * /connect <provider> bot command flow).
  */
 router.post('/oauth/start', async (req: Request, res: Response) => {
   try {

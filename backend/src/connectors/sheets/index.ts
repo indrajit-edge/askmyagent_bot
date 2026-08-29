@@ -65,7 +65,7 @@ export class SheetsConnector extends BaseGoogleConnector {
     const creds = await this.getCredentials(chatId);
     if (!creds) {
       await this.logOperation(chatId, toolName, 'error', 'Google Sheets is not connected');
-      throw new Error(`Google Sheets is not connected. Please type /connectsheets in Telegram to authorize.`);
+      throw new Error(`Google Sheets is not connected. Please ask the user to run /connect sheets to connect Google Sheets first.`);
     }
 
     try {

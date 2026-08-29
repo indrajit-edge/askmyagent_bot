@@ -19,7 +19,7 @@ export class CalendarConnector extends BaseGoogleConnector {
     const creds = await this.getCredentials(chatId);
     if (!creds) {
       await this.logOperation(chatId, toolName, 'error', 'User has not connected Google Calendar account');
-      throw new Error(`Google Calendar is not connected. Please type /connectcalendar in Telegram to authorize your Calendar.`);
+      throw new Error(`Google Calendar is not connected. Please ask the user to run /connect calendar to connect Google Calendar first.`);
     }
 
     try {

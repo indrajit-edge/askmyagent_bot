@@ -45,7 +45,7 @@ export class DriveConnector extends BaseGoogleConnector {
     const creds = await this.getCredentials(chatId);
     if (!creds) {
       await this.logOperation(chatId, toolName, 'error', 'User has not connected Google Drive');
-      throw new Error(`Google Drive is not connected. Please type /connectdrive in Telegram to authorize your Drive.`);
+      throw new Error(`Google Drive is not connected. Please ask the user to run /connect drive to connect Google Drive first.`);
     }
 
     try {

@@ -18,7 +18,7 @@ export class GmailConnector extends BaseGoogleConnector {
     const creds = await this.getCredentials(chatId);
     if (!creds) {
       await this.logOperation(chatId, toolName, 'error', 'User has not connected Gmail account');
-      throw new Error(`Gmail is not connected. Please type /connectgmail in Telegram to authorize your Gmail account.`);
+      throw new Error(`Gmail is not connected. Please ask the user to run /connect gmail to connect Gmail first.`);
     }
 
     try {

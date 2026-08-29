@@ -50,7 +50,7 @@ export class TasksConnector extends BaseGoogleConnector {
     const creds = await this.getCredentials(chatId);
     if (!creds) {
       await this.logOperation(chatId, toolName, 'error', 'Google Tasks is not connected');
-      throw new Error(`Google Tasks is not connected. Please type /connecttasks in Telegram to authorize.`);
+      throw new Error(`Google Tasks is not connected. Please ask the user to run /connect tasks to connect Google Tasks first.`);
     }
 
     try {

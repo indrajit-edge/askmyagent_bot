@@ -47,7 +47,7 @@ export class DocsConnector extends BaseGoogleConnector {
     const creds = await this.getCredentials(chatId);
     if (!creds) {
       await this.logOperation(chatId, toolName, 'error', 'Google Docs is not connected');
-      throw new Error(`Google Docs is not connected. Please type /connectdocs in Telegram to authorize.`);
+      throw new Error(`Google Docs is not connected. Please ask the user to run /connect docs to connect Google Docs first.`);
     }
 
     try {
