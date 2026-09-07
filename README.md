@@ -60,7 +60,7 @@
 flowchart TD
     subgraph ClientLayer["User & Agent Layer"]
         User["👤 End User (Telegram / Chat)"]
-        AIBot["🤖 AI Agent (e.g. Python Bot / LLM)"]
+        AIBot["🤖 AI Agent (Python Bot / LLM)"]
         AdminUser["🛡️ System Admin"]
     end
 
@@ -78,7 +78,7 @@ flowchart TD
     end
 
     subgraph DatabaseLayer["Data & Persistence"]
-        DB[("PostgreSQL / SQLite via Knex")]
+        DB[(PostgreSQL / SQLite via Knex)]
     end
 
     subgraph GoogleAPIs["Google Workspace APIs"]
@@ -90,12 +90,12 @@ flowchart TD
         Tasks["✅ Google Tasks API"]
     end
 
-    User <-->|Commands & Inbound Polling| AIBot
-    AIBot <-->|x-internal-token (HTTPS)| InternalAPI
-    User <-->|Web Browser / OAuth Redirect| Landing
-    AdminUser <-->|IP Whitelist + JWT Auth| AdminPanel
-    AdminPanel <-->|REST API| AdminRoutes
-    Landing <-->|REST API| OAuthRoutes
+    User <-->|"Commands & Inbound Polling"| AIBot
+    AIBot <-->|"x-internal-token over HTTPS"| InternalAPI
+    User <-->|"Web Browser / OAuth Redirect"| Landing
+    AdminUser <-->|"IP Whitelist + JWT Auth"| AdminPanel
+    AdminPanel <-->|"REST API"| AdminRoutes
+    Landing <-->|"REST API"| OAuthRoutes
 
     InternalAPI --> ConnectorRegistry
     OAuthRoutes --> CryptoService
