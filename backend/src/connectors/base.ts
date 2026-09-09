@@ -10,6 +10,7 @@ export interface ToolParameter {
   items?: {
     type: string;
     description?: string;
+    items?: any;
   };
 }
 
